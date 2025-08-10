@@ -106,7 +106,7 @@
         </div>
       @else
         <div class="grid gap-4">
-          @foreach ($projects as $p)
+            @foreach ($projects as $p)
             @php
               $statusColor = match($p->status) {
                 'queued' => 'bg-amber-100 text-amber-800',
@@ -114,6 +114,8 @@
                 'failed' => 'bg-rose-100 text-rose-800',
                 default => 'bg-gray-100 text-gray-800'
               };
+              $slidesTask = $p->tasks->where('type','slides')->sortByDesc('created_at')->first();
+              $slidesVersion = $slidesTask?->versions->sortByDesc('created_at')->first();
             @endphp
             <div class="flex flex-col md:flex-row md:items-center justify-between rounded-xl border p-4 hover:bg-gray-50 transition">
               <div class="space-y-1">
@@ -136,6 +138,9 @@
                 <form action="{{ route('tasks.slides', $p) }}" method="POST">@csrf
                   <button class="px-3 py-2 rounded-lg border hover:bg-rose-50">Slides</button>
                 </form>
+                @if($slidesVersion && $slidesVersion->file_path)
+                  <a href="{{ route('versions.download', $slidesVersion) }}" class="px-3 py-2 rounded-lg border hover:bg-emerald-50">Download PPTX</a>
+                @endif
                 <form action="{{ route('projects.destroy', $p) }}" method="POST" onsubmit="return confirm('Delete project?')">
                   @csrf @method('DELETE')
                   <button class="px-3 py-2 rounded-lg border text-rose-600 hover:bg-rose-50">Delete</button>

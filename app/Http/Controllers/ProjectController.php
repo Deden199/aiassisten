@@ -13,6 +13,7 @@ class ProjectController extends Controller
     {
         $projects = AiProject::where('tenant_id', $r->user()->tenant_id)
             ->where('user_id', $r->user()->id)
+            ->with('tasks.versions')
             ->latest()->paginate(8);
 
         return view('dashboard', compact('projects'));
