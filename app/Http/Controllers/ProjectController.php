@@ -9,10 +9,10 @@ use App\Services\DocumentParser;
 
 class ProjectController extends Controller
 {
-    public function index(Request $r)
+    public function index(Request $request)
     {
-        $projects = AiProject::where('tenant_id', $r->user()->tenant_id)
-            ->where('user_id', $r->user()->id)
+        $projects = AiProject::where('tenant_id', $request->user()->tenant_id)
+            ->where('user_id', $request->user()->id)
             ->with('tasks.versions')
             ->latest()->paginate(8);
 

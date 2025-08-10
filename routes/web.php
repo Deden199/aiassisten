@@ -18,21 +18,7 @@ Route::post('/locale', [LocaleController::class, 'update'])->name('locale');
 // Authenticated routes
 Route::middleware(['auth'])->group(function () {
 
-    // Dashboard - tambahkan fallback guard
-    Route::get('/dashboard', function () {
-        try {
-            return app(ProjectController::class)->index();
-        } catch (\Throwable $e) {
-            \Log::error('Dashboard error', [
-                'user_id' => auth()->id(),
-                'error'   => $e->getMessage(),
-            ]);
-            // Fallback view supaya nggak blank/500
-            return view('dashboard-fallback', [
-                'message' => 'Terjadi kesalahan saat memuat dashboard.',
-            ]);
-        }
-    })->name('dashboard');
+    Route::get('/dashboard', [ProjectController::class, 'index'])->name('dashboard');
 
     // Projects
     Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
