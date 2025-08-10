@@ -7,11 +7,11 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
 class Kernel extends HttpKernel
 {
     /**
-     * The application's route middleware.
+     * The application's middleware aliases.
      *
      * @var array<string, class-string|string>
      */
-    protected $routeMiddleware = [
+    protected $middlewareAliases = [
         // middleware bawaan Laravel
         'auth' => \App\Http\Middleware\Authenticate::class,
         'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
