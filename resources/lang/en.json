@@ -3,5 +3,11 @@
     "Language": "Language",
     "Dark Mode": "Dark Mode",
     "Welcome": "Welcome to AI Assistant",
-    "Missing": "Only in English"
+    "Missing": "Only in English",
+    "Buttons": "Buttons",
+    "Primary": "Primary",
+    "Secondary": "Secondary",
+    "Ghost": "Ghost",
+    "Link": "Link",
+    "Danger": "Danger"
 }
