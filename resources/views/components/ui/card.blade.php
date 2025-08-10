@@ -1,5 +1,5 @@
 @props(['padding' => true])
-<div {{ $attributes->merge(['class' => 'bg-white dark:bg-gray-800 rounded-lg shadow-md']) }}>
+<div {{ $attributes->merge(['class' => 'bg-white rounded-lg shadow-md']) }}>
     @isset($header)
         <div class="border-b border-border px-4 py-2">{{ $header }}</div>
     @endisset

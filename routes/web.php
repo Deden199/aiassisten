@@ -1,14 +1,22 @@
 <?php
+
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\{ProjectController, TaskController};
 
-Route::get('/', function(){ return view('landing'); })->name('landing');
+Route::get('/', fn () => view('welcome'))->name('landing');
 
-Route::middleware(['auth','enforce.tenant','license.gate'])->group(function(){
-    Route::get('/app', fn() => view('app.dashboard'))->name('app.dashboard');
-    Route::view('/app/projects', 'app.projects.index')->name('app.projects');
-});
+Route::middleware(['auth'])->group(function () {
+    Route::get('/dashboard', [ProjectController::class, 'index'])->name('dashboard');
+    Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
+    Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
 
-// Admin placeholder
-Route::middleware(['auth'])->group(function(){
-    Route::view('/admin', 'admin.dashboard')->name('admin.dashboard');
+    Route::post('/projects/{project}/tasks/summarize', [TaskController::class, 'summarize'])->name('tasks.summarize');
+    Route::post('/projects/{project}/tasks/mindmap',   [TaskController::class, 'mindmap'])->name('tasks.mindmap');
+    Route::post('/projects/{project}/tasks/slides',    [TaskController::class, 'slides'])->name('tasks.slides');
+    Route::post('/logout', function (Request $request) {
+    Auth::guard('web')->logout();
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+    return redirect('/');
+})->name('logout');
 });

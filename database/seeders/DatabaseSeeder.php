@@ -1,34 +1,70 @@
 <?php
+
 namespace Database\Seeders;
+
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
-use App\Models\{Tenant,User,Plan,Price,Subscription};
+use App\Models\{Tenant, User, Plan, Price, Subscription};
 
-class DatabaseSeeder extends Seeder {
-    public function run(): void {
-        $tenant = Tenant::create([
-            'id' => (string) Str::uuid(),
-            'name' => 'Demo Tenant',
-            'slug' => 'demo',
-            'default_locale' => 'en',
-            'default_currency' => 'USD',
-            'default_timezone' => 'UTC',
-        ]);
+class DatabaseSeeder extends Seeder
+{
+    public function run(): void
+    {
+        // Tenant demo (slug unik)
+        $tenant = Tenant::updateOrCreate(
+            ['slug' => 'demo'],
+            [
+                'id'               => Tenant::where('slug', 'demo')->value('id') ?? (string) Str::uuid(),
+                'name'             => 'Demo Tenant',
+                'default_locale'   => 'en',
+                'default_currency' => 'USD',
+                'default_timezone' => 'UTC',
+                'is_active'        => true,
+            ]
+        );
 
-        $admin = User::factory()->create([
-            'tenant_id' => $tenant->id,
-            'name' => 'Demo Admin',
-            'email' => 'admin@demo.test',
-            'password' => bcrypt('password'),
-            'role' => 'admin',
-        ]);
+        // Admin demo (unik pada (tenant_id, email))
+        $admin = User::updateOrCreate(
+            ['tenant_id' => $tenant->id, 'email' => 'admin@demo.test'],
+            [
+                'name'              => 'Demo Admin',
+                'password'          => bcrypt('password'),
+                'role'              => 'admin',
+                'email_verified_at' => now(),
+            ]
+        );
 
-        $free = Plan::create(['id'=>(string)Str::uuid(),'code'=>'free','features'=>['credits'=>50],'is_active'=>1]);
-        $pro  = Plan::create(['id'=>(string)Str::uuid(),'code'=>'pro','features'=>['credits'=>1000],'is_active'=>1]);
+        // Plans
+        $free = Plan::updateOrCreate(
+            ['code' => 'free'],
+            ['features' => ['credits' => 50], 'is_active' => 1]
+        );
 
-        Price::create(['id'=>(string)Str::uuid(),'plan_id'=>$pro->id,'currency'=>'USD','amount_cents'=>9900]);
-        Price::create(['id'=>(string)Str::uuid(),'plan_id'=>$pro->id,'currency'=>'IDR','amount_cents'=>1500000]);
+        $pro = Plan::updateOrCreate(
+            ['code' => 'pro'],
+            ['features' => ['credits' => 1000], 'is_active' => 1]
+        );
 
-        Subscription::create(['id'=>(string)Str::uuid(),'tenant_id'=>$tenant->id,'plan_id'=>$free->id,'status'=>'active']);
+        // Prices (unik per plan + currency)
+        Price::updateOrCreate(
+            ['plan_id' => $pro->id, 'currency' => 'USD'],
+            ['amount_cents' => 9900, 'is_active' => 1]
+        );
+        Price::updateOrCreate(
+            ['plan_id' => $pro->id, 'currency' => 'IDR'],
+            ['amount_cents' => 1500000, 'is_active' => 1]
+        );
+
+        // Subscription per-tenant (unik)
+        Subscription::updateOrCreate(
+            ['tenant_id' => $tenant->id],
+            [
+                'plan_id'               => $free->id,
+                'status'                => 'active',
+                'current_period_start'  => now(),
+                'current_period_end'    => now()->addMonth(),
+                'cancel_at_period_end'  => false,
+            ]
+        );
     }
 }
