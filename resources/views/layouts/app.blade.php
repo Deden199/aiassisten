@@ -1,24 +1,20 @@
-<!DOCTYPE html>
-<html lang="{{ app()->getLocale() }}" @if($isRtl ?? false) dir="rtl" @endif>
+<!doctype html>
+<html lang="{{ app()->getLocale() }}" @if(app()->getLocale()==='ar') dir="rtl" @endif>
 <head>
-    <meta charset="utf-8">
-    <title>{{ __t('Home') }}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.4/dist/tailwind.min.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>@yield('title','AI Assistant')</title>
+  @vite(['resources/css/app.css','resources/js/app.js'])
 </head>
-<body class="antialiased">
-<nav class="p-4 border-b flex justify-between">
-    <a href="/{{ app()->getLocale() }}" class="font-bold">{{ __t('Home') }}</a>
-    <form>
-        <select name="locale" onchange="this.form.submit()" class="border p-1">
-            @foreach(config('app.available_locales') as $loc)
-                <option value="{{ $loc }}" @selected(app()->getLocale()==$loc)>{{ $loc }}</option>
-            @endforeach
-        </select>
-    </form>
-</nav>
-<div class="p-6">
-    @yield('content')
-</div>
+<body class="min-h-dvh bg-background text-foreground">
+  <header class="border-b">
+    <div class="max-w-6xl mx-auto p-4 flex items-center justify-between">
+      <a href="/" class="font-bold">AI Assistant</a>
+      <nav class="flex items-center gap-4">
+        <a href="/app" class="hover:underline">Dashboard</a>
+      </nav>
+    </div>
+  </header>
+  <main>@yield('content')</main>
 </body>
 </html>
