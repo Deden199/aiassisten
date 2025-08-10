@@ -28,9 +28,9 @@ class AiProvider
         $this->model = env('AI_MODEL', $this->provider === 'anthropic' ? 'claude-3-haiku-20240307' : 'gpt-4o-mini');
     }
 
-    public function generate(AiProject $project, string $type, string $locale = 'en'): array
+    public function generate(AiProject $project, string $type, string $locale = 'en', ?string $text = null): array
     {
-        $text = $project->source_text ?? '';
+        $text = $text ?? ($project->source_text ?? '');
         if (!$text && $project->source_disk && $project->source_path) {
             $text = (string) Storage::disk($project->source_disk)->get($project->source_path);
         }
