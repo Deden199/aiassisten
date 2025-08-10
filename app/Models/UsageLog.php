@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Models\Scopes\EnforceTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Model;
 
 class UsageLog extends Model
 {
@@ -34,6 +35,18 @@ class UsageLog extends Model
         'created_at' => 'datetime',
     ];
 
-    public function tenant() { return $this->belongsTo(Tenant::class); }
-    public function user()   { return $this->belongsTo(User::class); }
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new EnforceTenant);
+    }
+
+    public function tenant()
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }
