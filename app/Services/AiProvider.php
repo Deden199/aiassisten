@@ -30,8 +30,8 @@ class AiProvider
 
     public function generate(AiProject $project, string $type, string $locale = 'en'): array
     {
-        $text = '';
-        if ($project->source_disk && $project->source_path) {
+        $text = $project->source_text ?? '';
+        if (!$text && $project->source_disk && $project->source_path) {
             $text = (string) Storage::disk($project->source_disk)->get($project->source_path);
         }
 
