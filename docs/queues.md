@@ -1,6 +1,6 @@
 # Queue Workers
 
-The application offloads long-running work to the queue. `ProcessAiTask` and PPTX export jobs run asynchronously and require a Redis-backed queue.
+The application offloads long-running work to the queue. `ProcessAiTask` and PPTX export jobs run asynchronously and require a Redis-backed queue. After running `php artisan aiassisten:install`, configure and start workers as described below.
 
 ## Redis
 
