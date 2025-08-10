@@ -115,10 +115,13 @@
                 'failed' => 'bg-rose-100 text-rose-800',
                 default => 'bg-gray-100 text-gray-800'
               };
+              $summaryTask = $p->tasks->where('type','summarize')->sortByDesc('created_at')->first();
+              $mindmapTask = $p->tasks->where('type','mindmap')->sortByDesc('created_at')->first();
               $slidesTask = $p->tasks->where('type','slides')->sortByDesc('created_at')->first();
               $slidesVersion = $slidesTask?->versions->sortByDesc('created_at')->first();
             @endphp
-            <div class="flex flex-col md:flex-row md:items-center justify-between rounded-xl border p-4 hover:bg-gray-50 transition">
+            <div class="rounded-xl border p-4 hover:bg-gray-50 transition flex flex-col">
+              <div class="flex flex-col md:flex-row md:items-center justify-between">
               <div class="space-y-1">
                 <div class="font-medium text-gray-900">{{ $p->title }}</div>
                 <div class="text-sm text-gray-500">
@@ -161,6 +164,18 @@
                   @csrf @method('DELETE')
                   <button class="px-3 py-2 rounded-lg border text-rose-600 hover:bg-rose-50">Delete</button>
                 </form>
+              </div>
+              </div>
+              <div class="mt-4 space-y-2">
+                @if($summaryTask)
+                  <x-task-result :project="$p" :task="$summaryTask" />
+                @endif
+                @if($mindmapTask)
+                  <x-task-result :project="$p" :task="$mindmapTask" />
+                @endif
+                @if($slidesTask)
+                  <x-task-result :project="$p" :task="$slidesTask" />
+                @endif
               </div>
             </div>
           @endforeach
