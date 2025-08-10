@@ -33,3 +33,5 @@ Route::middleware(['auth'])->group(function () {
 
 Route::post('/webhooks/stripe', [WebhookController::class, 'stripe']);
 Route::post('/webhooks/paypal', [WebhookController::class, 'paypal']);
+
+require __DIR__.'/admin.php';

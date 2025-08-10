@@ -66,6 +66,14 @@ class User extends Authenticatable
      */
     public function isTenantAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->role === 'admin' && ! is_null($this->tenant_id);
+    }
+
+    /**
+     * Cek apakah user ini super admin (global)
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'admin' && is_null($this->tenant_id);
     }
 }

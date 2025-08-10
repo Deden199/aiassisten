@@ -21,5 +21,6 @@ class Kernel extends HttpKernel
         'enforce.tenant' => \App\Http\Middleware\EnforceTenant::class,
         'license.gate'   => \App\Http\Middleware\LicenseGate::class,
         'cost.cap'       => \App\Http\Middleware\CostCapGuard::class,
+        'admin'          => \App\Http\Middleware\EnsureAdmin::class,
     ];
 }
