@@ -8,7 +8,7 @@ The application reads configuration from the `.env` file. Important keys:
 | `APP_LOCALE` | Default locale (e.g. `en`). |
 | `APP_TIMEZONE` | Time zone identifier. |
 | `DB_*` | Database connection details. |
-| `QUEUE_CONNECTION` | Usually `redis` or `database`. |
+| `QUEUE_CONNECTION` | Defaults to `redis`; requires a running Redis instance. |
 | `CACHE_STORE` | Cache driver, defaults to `file` or `redis`. |
 | `AI_OPENAI_KEY` | API key for OpenAI services. Leave blank to disable. |
 | `FILESYSTEM_DISK` | Default storage disk (`local`, `s3`, etc.). |
