@@ -48,7 +48,7 @@ class TaskController extends Controller
         return [
             'status'   => $task->status,
             'message'  => $task->message,
-            'versions' => $task->versions()->latest()->get(),
+            'versions' => $task->versions()->latest()->get()->makeVisible('payload'),
         ];
     }
 
