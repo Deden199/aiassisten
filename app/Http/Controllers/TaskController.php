@@ -34,7 +34,16 @@ class TaskController extends Controller
     }
 
     public function summarize(Request $r, AiProject $project) { return $this->makeTask($r, $project, 'summarize', $r->input('locale','en')); }
-    public function mindmap(Request $r, AiProject $project)   { return $this->makeTask($r, $project, 'mindmap',   $r->input('locale','en')); }
+    public function mindmap(Request $r, AiProject $project)
+    {
+        abort_unless($project->tenant_id === $r->user()->tenant_id && $project->user_id === $r->user()->id, 403);
+
+        if ($r->isMethod('get')) {
+            return view('tasks.mindmap', ['project' => $project]);
+        }
+
+        return $this->makeTask($r, $project, 'mindmap', $r->input('locale', 'en'));
+    }
     public function slides(Request $r, AiProject $project)    { return $this->makeTask($r, $project, 'slides',    $r->input('locale','en')); }
 
     public function download(Request $r, AiTaskVersion $version, PptxExporter $exporter)
