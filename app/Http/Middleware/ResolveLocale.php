@@ -6,25 +6,28 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cookie;
 
 class ResolveLocale
 {
     public function handle(Request $request, Closure $next)
     {
-        $locale = $request->route('locale');
         $available = config('app.available_locales', []);
+        $locale = null;
 
-        if (! $locale && $request->query('locale')) {
-            $locale = $request->query('locale');
-        }
-
-        if (! $locale && ($user = Auth::user()) && $user->locale) {
+        if (($user = Auth::user()) && $user->locale) {
             $locale = $user->locale;
         }
 
         if (! $locale && $request->cookie('locale')) {
             $locale = $request->cookie('locale');
+        }
+
+        if (! $locale && $request->route('locale')) {
+            $locale = $request->route('locale');
+        }
+
+        if (! $locale && $request->query('locale')) {
+            $locale = $request->query('locale');
         }
 
         if (! $locale) {
@@ -36,7 +39,6 @@ class ResolveLocale
         }
 
         App::setLocale($locale);
-        Cookie::queue('locale', $locale, 60 * 24 * 365);
 
         return $next($request);
     }

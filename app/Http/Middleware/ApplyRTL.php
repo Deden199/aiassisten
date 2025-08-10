@@ -10,7 +10,7 @@ class ApplyRTL
 {
     public function handle(Request $request, Closure $next)
     {
-        $isRtl = in_array(app()->getLocale(), ['ar']);
+        $isRtl = in_array(app()->getLocale(), config('app.rtl_locales', []));
         View::share('isRtl', $isRtl);
         return $next($request);
     }
