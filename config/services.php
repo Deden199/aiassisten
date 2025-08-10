@@ -45,4 +45,15 @@ return [
         'model' => env('ANTHROPIC_MODEL', 'claude-3-haiku-20240307'),
     ],
 
+    'stripe' => [
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
+    'paypal' => [
+        'client_id' => env('PAYPAL_CLIENT_ID'),
+        'secret' => env('PAYPAL_SECRET'),
+        'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
+    ],
+
 ];

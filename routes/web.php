@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{ProjectController, TaskController};
+use App\Http\Controllers\{ProjectController, TaskController, BillingController, WebhookController};
 
 Route::get('/', fn () => view('welcome'))->name('landing');
 
@@ -14,6 +14,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/projects/{project}/tasks/mindmap',   [TaskController::class, 'mindmap'])->name('tasks.mindmap');
     Route::post('/projects/{project}/tasks/slides',    [TaskController::class, 'slides'])->name('tasks.slides');
     Route::get('/versions/{version}/download', [TaskController::class, 'download'])->name('versions.download');
+    Route::get('/billing', [BillingController::class, 'index'])->name('billing');
+    Route::post('/billing/checkout', [BillingController::class, 'checkout'])->name('billing.checkout');
+    Route::get('/billing/invoice/{invoice}', [BillingController::class, 'invoice'])->name('billing.invoice');
     Route::post('/logout', function (Request $request) {
     Auth::guard('web')->logout();
     $request->session()->invalidate();
@@ -21,3 +24,6 @@ Route::middleware(['auth'])->group(function () {
     return redirect('/');
 })->name('logout');
 });
+
+Route::post('/webhooks/stripe', [WebhookController::class, 'stripe']);
+Route::post('/webhooks/paypal', [WebhookController::class, 'paypal']);
