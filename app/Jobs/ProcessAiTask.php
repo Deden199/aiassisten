@@ -29,6 +29,11 @@ class ProcessAiTask implements ShouldQueue
 
     public function handle(AiProvider $provider): void
     {
+        $this->task->update([
+            'status'  => 'running',
+            'message' => 'Processing...',
+        ]);
+
         $project = $this->task->project;
         $text = $project->source_text ?? '';
         if (!$text && $project->source_disk && $project->source_path) {
