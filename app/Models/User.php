@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Models\Scopes\EnforceTenant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -42,7 +42,13 @@ class User extends Authenticatable
 
     protected static function booted(): void
     {
-        static::addGlobalScope(new EnforceTenant);
+        static::addGlobalScope('tenant', function (Builder $builder) {
+            $tenantId = session('tenant_id') ?? request()->get('tenant_id');
+
+            if ($tenantId) {
+                $builder->where($builder->qualifyColumn('tenant_id'), $tenantId);
+            }
+        });
     }
 
     /**
