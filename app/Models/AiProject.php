@@ -23,6 +23,8 @@ class AiProject extends Model
         'error_message',
     ];
 
+    protected $hidden = ['source_text'];
+
     protected static function booted(): void
     {
         static::addGlobalScope(new EnforceTenant);
