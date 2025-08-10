@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\AiTask;
 use App\Models\AiTaskVersion;
+use App\Models\UsageLog;
 use App\Services\AiProvider;
 use App\Support\TextChunker;
 use Illuminate\Bus\Queueable;
@@ -68,6 +69,25 @@ class ProcessAiTask implements ShouldQueue
             'locale'  => $this->locale,
             'payload' => $payload,
         ]);
+
+        UsageLog::create([
+            'tenant_id'  => $this->task->tenant_id,
+            'user_id'    => $this->task->user_id,
+            'task_id'    => $this->task->id,
+            'event'      => 'task.completed',
+            'cost_cents' => $costCents,
+            'tokens_in'  => $inputTokens,
+            'tokens_out' => $outputTokens,
+        ]);
+
+        $totalTokens = $inputTokens + $outputTokens;
+        $costDollars = $costCents / 100;
+
+        $project->user->increment('usage_tokens', $totalTokens);
+        $project->user->increment('usage_cost', $costDollars);
+
+        $project->tenant->increment('usage_tokens', $totalTokens);
+        $project->tenant->increment('usage_cost', $costDollars);
     }
 
     public function failed(Throwable $e): void
