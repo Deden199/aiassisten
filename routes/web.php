@@ -13,6 +13,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/projects/{project}/tasks/summarize', [TaskController::class, 'summarize'])->name('tasks.summarize');
     Route::post('/projects/{project}/tasks/mindmap',   [TaskController::class, 'mindmap'])->name('tasks.mindmap');
     Route::post('/projects/{project}/tasks/slides',    [TaskController::class, 'slides'])->name('tasks.slides');
+    Route::get('/versions/{version}/download', [TaskController::class, 'download'])->name('versions.download');
     Route::post('/logout', function (Request $request) {
     Auth::guard('web')->logout();
     $request->session()->invalidate();
