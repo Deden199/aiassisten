@@ -86,6 +86,8 @@ return [
         'en','es','pt-BR','id','th','ar','fr','de','tr','vi','hi','ja'
     ],
 
+    'rtl_locales' => ['ar'],
+
     'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
 
     /*

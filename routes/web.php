@@ -1,12 +1,15 @@
 <?php
 
 use App\Http\Controllers\BillingController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('welcome'))->name('landing');
+
+Route::post('/locale', [LocaleController::class, 'update'])->name('locale');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [ProjectController::class, 'index'])->name('dashboard');
