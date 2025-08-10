@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Models\AiProject;
+use App\Services\DocumentParser;
 
 class ProjectController extends Controller
 {
@@ -17,7 +18,7 @@ class ProjectController extends Controller
         return view('dashboard', compact('projects'));
     }
 
-    public function store(Request $r)
+    public function store(Request $r, DocumentParser $parser)
     {
         $r->validate([
             'title' => ['required','string','max:160'],
@@ -25,10 +26,11 @@ class ProjectController extends Controller
             'language' => ['nullable','string','max:10'],
         ]);
 
-        $path = null; $disk = 'private'; $filename = null;
+        $path = null; $disk = 'private'; $filename = null; $text = '';
         if ($r->hasFile('file')) {
             $filename = $r->file('file')->getClientOriginalName();
             $path = $r->file('file')->store("uploads/{$r->user()->tenant_id}", $disk);
+            $text = $parser->parse($disk, $path);
         }
 
         AiProject::create([
@@ -40,6 +42,7 @@ class ProjectController extends Controller
             'source_disk'     => $disk,
             'source_path'     => $path,
             'language'        => $r->input('language', $r->user()->locale ?? 'en'),
+            'source_text'     => $text,
             'status'          => 'ready',
         ]);
 
