@@ -27,7 +27,7 @@ Route::middleware(['auth'])->group(function () {
     // Tasks (throttled + cost cap)
     Route::middleware(['throttle:tasks', 'cost.cap'])->group(function () {
         Route::post('/projects/{project}/tasks/summarize', [TaskController::class, 'summarize'])->name('tasks.summarize');
-        Route::post('/projects/{project}/tasks/mindmap', [TaskController::class, 'mindmap'])->name('tasks.mindmap');
+        Route::match(['get', 'post'], '/projects/{project}/tasks/mindmap', [TaskController::class, 'mindmap'])->name('tasks.mindmap');
         Route::post('/projects/{project}/tasks/slides', [TaskController::class, 'slides'])->name('tasks.slides');
     });
 
