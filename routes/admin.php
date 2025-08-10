@@ -19,3 +19,4 @@ Route::middleware(['auth', 'admin'])
         Route::resource('subscriptions', SubscriptionController::class)->only(['index']);
         Route::resource('licenses', LicenseController::class)->only(['index', 'update']);
     });
+require __DIR__.'/auth.php';

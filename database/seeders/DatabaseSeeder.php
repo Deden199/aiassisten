@@ -23,6 +23,9 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        // Pastikan semua user yang tenant_id-nya null di-assign ke tenant demo
+        User::whereNull('tenant_id')->update(['tenant_id' => $tenant->id]);
+
         // Admin demo (unik pada (tenant_id, email))
         $admin = User::updateOrCreate(
             ['tenant_id' => $tenant->id, 'email' => 'admin@demo.test'],
