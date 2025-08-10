@@ -33,6 +33,25 @@ class TaskController extends Controller
         return back()->with('ok', ucfirst($type).' queued.');
     }
 
+    public function show(Request $r, AiTask $task)
+    {
+        $project = $r->route('project');
+
+        abort_unless(
+            $project &&
+            $project->tenant_id === $r->user()->tenant_id &&
+            $project->user_id === $r->user()->id &&
+            $task->project_id === $project->id,
+            403
+        );
+
+        return [
+            'status'   => $task->status,
+            'message'  => $task->message,
+            'versions' => $task->versions()->latest()->get(),
+        ];
+    }
+
     public function summarize(Request $r, AiProject $project) { return $this->makeTask($r, $project, 'summarize', $r->input('locale','en')); }
     public function mindmap(Request $r, AiProject $project)
     {

@@ -31,6 +31,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/projects/{project}/tasks/slides', [TaskController::class, 'slides'])->name('tasks.slides');
     });
 
+    Route::get('/projects/{project}/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
+
     // Versions
     Route::get('/versions/{version}/download', [TaskController::class, 'download'])->name('versions.download');
 
