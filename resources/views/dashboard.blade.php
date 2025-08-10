@@ -110,6 +110,7 @@
             @php
               $statusColor = match($p->status) {
                 'queued' => 'bg-amber-100 text-amber-800',
+                'running' => 'bg-blue-100 text-blue-800',
                 'ready' => 'bg-emerald-100 text-emerald-800',
                 'failed' => 'bg-rose-100 text-rose-800',
                 default => 'bg-gray-100 text-gray-800'
