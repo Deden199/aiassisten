@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\EnforceTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -16,7 +17,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',         // admin, user, etc.
+        'role',         // admin, user, dll.
         'usage_tokens', // total token AI terpakai
         'usage_cost',   // total biaya terpakai
         'plan_id',      // untuk billing
@@ -39,7 +40,12 @@ class User extends Authenticatable
         ];
     }
 
-    /** 
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new EnforceTenant);
+    }
+
+    /**
      * Relasi ke tenant
      */
     public function tenant()
@@ -47,7 +53,7 @@ class User extends Authenticatable
         return $this->belongsTo(Tenant::class);
     }
 
-    /** 
+    /**
      * Relasi ke plan
      */
     public function plan()
@@ -55,7 +61,7 @@ class User extends Authenticatable
         return $this->belongsTo(Plan::class);
     }
 
-    /** 
+    /**
      * Cek apakah user ini admin tenant
      */
     public function isTenantAdmin(): bool
