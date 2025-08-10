@@ -10,9 +10,11 @@ class EnforceTenant implements Scope
 {
     public function apply(Builder $builder, Model $model): void
     {
-        $tenantId = auth()->user()->tenant_id ?? null;
-        if ($tenantId) {
-            $builder->where($model->qualifyColumn('tenant_id'), $tenantId);
+        if (auth()->hasUser()) {
+            $tenantId = auth()->user()?->tenant_id;
+            if ($tenantId) {
+                $builder->where($model->qualifyColumn('tenant_id'), $tenantId);
+            }
         }
     }
 }
