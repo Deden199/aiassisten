@@ -92,7 +92,7 @@
     </div>
 
     {{-- Projects --}}
-    <div class="rounded-2xl border bg-white p-6 shadow-sm">
+    <div x-data="taskRunner" class="rounded-2xl border bg-white p-6 shadow-sm">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold">Your projects</h3>
         <div class="text-sm text-gray-500">{{ $projects->total() }} total</div>
@@ -130,15 +130,30 @@
               </div>
 
               <div class="flex items-center gap-2 mt-3 md:mt-0">
-                <form action="{{ route('tasks.summarize', $p) }}" method="POST">@csrf
-                  <button class="px-3 py-2 rounded-lg border hover:bg-violet-50">Summary</button>
-                </form>
-                <form action="{{ route('tasks.mindmap', $p) }}" method="POST">@csrf
-                  <button class="px-3 py-2 rounded-lg border hover:bg-fuchsia-50">Mindmap</button>
-                </form>
-                <form action="{{ route('tasks.slides', $p) }}" method="POST">@csrf
-                  <button class="px-3 py-2 rounded-lg border hover:bg-rose-50">Slides</button>
-                </form>
+                <button @click="run('{{ $p->id }}','summarize','{{ route('tasks.summarize', $p) }}')"
+                  class="px-3 py-2 rounded-lg border hover:bg-violet-50 flex items-center gap-2">
+                  <svg x-cloak x-show="isPending('{{ $p->id }}','summarize')" class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
+                  </svg>
+                  <span x-show="!isPending('{{ $p->id }}','summarize')">Summary</span>
+                </button>
+                <button @click="run('{{ $p->id }}','mindmap','{{ route('tasks.mindmap', $p) }}')"
+                  class="px-3 py-2 rounded-lg border hover:bg-fuchsia-50 flex items-center gap-2">
+                  <svg x-cloak x-show="isPending('{{ $p->id }}','mindmap')" class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
+                  </svg>
+                  <span x-show="!isPending('{{ $p->id }}','mindmap')">Mindmap</span>
+                </button>
+                <button @click="run('{{ $p->id }}','slides','{{ route('tasks.slides', $p) }}')"
+                  class="px-3 py-2 rounded-lg border hover:bg-rose-50 flex items-center gap-2">
+                  <svg x-cloak x-show="isPending('{{ $p->id }}','slides')" class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
+                  </svg>
+                  <span x-show="!isPending('{{ $p->id }}','slides')">Slides</span>
+                </button>
                 @if($slidesVersion && $slidesVersion->file_path)
                   <a href="{{ route('versions.download', $slidesVersion) }}" class="px-3 py-2 rounded-lg border hover:bg-emerald-50">Download PPTX</a>
                 @endif
