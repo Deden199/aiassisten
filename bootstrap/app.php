@@ -12,9 +12,18 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/healthz',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // ikutkan middleware ini di grup web
         $middleware->appendToGroup('web', [
             \App\Http\Middleware\ResolveLocale::class,
             \App\Http\Middleware\ApplyRTL::class,
+        ]);
+
+        // DAFTARKAN ALIAS YANG DIPAKAI DI ROUTES
+        $middleware->alias([
+            'admin'          => \App\Http\Middleware\EnsureAdmin::class,
+            'enforce.tenant' => \App\Http\Middleware\EnforceTenant::class,
+            'license.gate'   => \App\Http\Middleware\LicenseGate::class,
+            'cost.cap'       => \App\Http\Middleware\CostCapGuard::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
