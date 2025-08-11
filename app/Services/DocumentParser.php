@@ -53,25 +53,47 @@ class DocumentParser
 
     protected function parsePdf(string $fullPath): string
     {
-        try {
-return Pdf::fromPath($fullPath)
-    ->setPdfBinary(config('services.pdftotext_binary'))
-    ->text();
+        $binary = config('services.pdftotext_binary');
 
-        } catch (\Throwable $e) {
+        if ($binary && is_executable($binary)) {
+            $this->logger->info('Parsing PDF using Spatie\\PdfToText', [
+                'path' => $fullPath,
+                'binary' => $binary,
+            ]);
+
             try {
-                $parser = new PdfParser;
-
-                return $parser->parseFile($fullPath)->getText();
-            } catch (\Throwable $fallbackException) {
-                $this->logger->error('PDF parsing failed using both parsers', [
+                return Pdf::fromPath($fullPath)
+                    ->setPdfBinary($binary)
+                    ->text();
+            } catch (\Throwable $e) {
+                $this->logger->warning('Spatie\\PdfToText failed, falling back to Smalot\\PdfParser', [
                     'path' => $fullPath,
-                    'spatie_error' => $e->getMessage(),
-                    'smalot_error' => $fallbackException->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
-
-                return '';
             }
+        }
+
+        $this->logger->info('Parsing PDF using Smalot\\PdfParser', [
+            'path' => $fullPath,
+        ]);
+
+        try {
+            $parser = new PdfParser;
+
+            return $parser->parseFile($fullPath)->getText();
+        } catch (\Throwable $fallbackException) {
+            $context = [
+                'path' => $fullPath,
+                'smalot_error' => $fallbackException->getMessage(),
+            ];
+
+            if (isset($e)) {
+                $context['spatie_error'] = $e->getMessage();
+            }
+
+            $this->logger->error('PDF parsing failed', $context);
+
+            return '';
         }
     }
 }
