@@ -111,6 +111,34 @@ class AiProvider
         ];
     }
 
+    public static function extractContent(array $result): ?string
+    {
+        $data = $result['raw'] ?? $result;
+
+        if (isset($data['content'])) {
+            if (is_string($data['content'])) {
+                return trim($data['content']);
+            }
+            if (is_array($data['content']) && isset($data['content'][0]['text']) && is_string($data['content'][0]['text'])) {
+                return trim($data['content'][0]['text']);
+            }
+        }
+
+        if (isset($data['text']) && is_string($data['text'])) {
+            return trim($data['text']);
+        }
+
+        if (isset($data['choices'][0]['message']['content']) && is_string($data['choices'][0]['message']['content'])) {
+            return trim($data['choices'][0]['message']['content']);
+        }
+
+        if (isset($data['choices'][0]['text']) && is_string($data['choices'][0]['text'])) {
+            return trim($data['choices'][0]['text']);
+        }
+
+        return null;
+    }
+
     private function calculateCost(string $model, int $input, int $output): int
     {
         $pricing = $this->provider === 'anthropic'
