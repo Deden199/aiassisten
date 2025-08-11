@@ -72,9 +72,7 @@ class ProcessAiTask implements ShouldQueue
                     return;
                 }
 
-                $piece = $result['content']
-                    ?? $result['text']
-                    ?? ($result['raw']['choices'][0]['message']['content'] ?? ($result['raw']['content'][0]['text'] ?? null));
+                $piece = AiProvider::extractContent($result);
 
                 $decoded = [];
                 if (is_string($piece) && $piece !== '') {
@@ -163,9 +161,7 @@ class ProcessAiTask implements ShouldQueue
                 return;
             }
 
-            $piece = $result['content']
-                ?? $result['text']
-                ?? ($result['raw']['choices'][0]['message']['content'] ?? ($result['raw']['content'][0]['text'] ?? null));
+            $piece = AiProvider::extractContent($result);
 
             if (is_string($piece) && $piece !== '') {
                 $contents[] = trim($piece);
