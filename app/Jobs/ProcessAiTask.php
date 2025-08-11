@@ -15,6 +15,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class ProcessAiTask implements ShouldQueue
@@ -61,6 +62,15 @@ class ProcessAiTask implements ShouldQueue
 
             foreach ($chunks as $chunk) {
                 $result = $provider->generate($project, $this->task->type, $this->locale, $chunk);
+
+                if (isset($result['error'])) {
+                    Log::error('AI provider error', $result['error']);
+                    $this->task->update([
+                        'status'  => 'failed',
+                        'message' => 'Provider error',
+                    ]);
+                    return;
+                }
 
                 $piece = $result['content']
                     ?? $result['text']
@@ -143,6 +153,15 @@ class ProcessAiTask implements ShouldQueue
 
         foreach ($chunks as $index => $chunk) {
             $result = $provider->generate($project, $this->task->type, $this->locale, $chunk);
+
+            if (isset($result['error'])) {
+                Log::error('AI provider error', $result['error']);
+                $this->task->update([
+                    'status'  => 'failed',
+                    'message' => 'Provider error',
+                ]);
+                return;
+            }
 
             $piece = $result['content']
                 ?? $result['text']

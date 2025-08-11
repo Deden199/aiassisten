@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\AiProject;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class AiProvider
 {
@@ -45,26 +47,53 @@ class AiProvider
             return ['raw' => ['error' => 'missing openai api key'], 'input_tokens' => 0, 'output_tokens' => 0, 'cost_cents' => 0];
         }
 
-        if ($this->provider === 'anthropic') {
-            $response = Http::withHeaders([
-                'x-api-key' => env('ANTHROPIC_API_KEY'),
-                'anthropic-version' => '2023-06-01',
-            ])->post(self::ANTHROPIC_ENDPOINT, [
-                'model' => $this->model,
-                'max_tokens' => 1024,
-                'messages' => [
-                    ['role' => 'user', 'content' => $prompt],
-                ],
-            ]);
-        } else {
-            $response = Http::withToken(env('OPENAI_API_KEY'))
-                ->post(self::OPENAI_ENDPOINT, [
-                    'model' => $this->model,
-                    'response_format' => ['type' => 'json_object'],
-                    'messages' => [
+        try {
+            if ($this->provider === 'anthropic') {
+                $response = Http::withHeaders([
+                    'x-api-key'       => env('ANTHROPIC_API_KEY'),
+                    'anthropic-version' => '2023-06-01',
+                ])->post(self::ANTHROPIC_ENDPOINT, [
+                    'model'     => $this->model,
+                    'max_tokens' => 1024,
+                    'messages'  => [
                         ['role' => 'user', 'content' => $prompt],
                     ],
                 ]);
+            } else {
+                $response = Http::withToken(env('OPENAI_API_KEY'))
+                    ->post(self::OPENAI_ENDPOINT, [
+                        'model'          => $this->model,
+                        'response_format' => ['type' => 'json_object'],
+                        'messages'       => [
+                            ['role' => 'user', 'content' => $prompt],
+                        ],
+                    ]);
+            }
+        } catch (Throwable $e) {
+            Log::error('AI provider request exception', ['exception' => $e]);
+
+            return [
+                'error'        => ['status' => null, 'body' => $e->getMessage()],
+                'raw'          => [],
+                'input_tokens' => 0,
+                'output_tokens' => 0,
+                'cost_cents'   => 0,
+            ];
+        }
+
+        if (!$response->successful()) {
+            Log::error('AI provider request failed', [
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
+
+            return [
+                'error'        => ['status' => $response->status(), 'body' => $response->json() ?? $response->body()],
+                'raw'          => $response->json() ?? [],
+                'input_tokens' => 0,
+                'output_tokens' => 0,
+                'cost_cents'   => 0,
+            ];
         }
 
         $data = $response->json();
