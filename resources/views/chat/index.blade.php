@@ -1,6 +1,12 @@
 @extends('layouts.app')
 
 @section('title','Chat')
+@section('meta_description','Interact with our AI assistant in real time.')
+@section('canonical', route('chat'))
+@push('meta')
+  <meta property="og:image" content="{{ asset('images/chat-og.png') }}">
+  <meta name="twitter:image" content="{{ asset('images/chat-og.png') }}">
+@endpush
 
 @section('header')
   <h2 class="font-semibold text-xl text-gray-800">Chatbot</h2>
