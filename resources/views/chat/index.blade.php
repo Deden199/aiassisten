@@ -29,6 +29,9 @@ function add(role, text){
   box.appendChild(item); box.scrollTop = box.scrollHeight;
 }
 
+const history = @json($messages);
+history.forEach(m => add(m.role, m.content));
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const text = input.value.trim(); if(!text) return;

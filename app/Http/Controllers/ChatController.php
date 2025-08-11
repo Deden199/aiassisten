@@ -2,14 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ChatSession;
 use App\Services\AiProvider;
 use Illuminate\Http\Request;
 
 class ChatController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return view('chat.index');
+        $session = ChatSession::firstOrCreate(
+            ['user_id' => $request->user()->id],
+            ['tenant_id' => $request->user()->tenant_id]
+        );
+
+        $messages = $session->messages()->orderBy('created_at')->get(['role','content']);
+
+        return view('chat.index', compact('messages'));
     }
 
     public function send(Request $request, AiProvider $provider)
@@ -28,11 +36,29 @@ class ChatController extends Controller
             'tenant' => $request->user()->tenant,
         ];
 
+        $session = ChatSession::firstOrCreate(
+            ['user_id' => $request->user()->id],
+            ['tenant_id' => $request->user()->tenant_id]
+        );
+
+        $session->messages()->create([
+            'tenant_id' => $request->user()->tenant_id,
+            'role' => 'user',
+            'content' => $data['message'],
+        ]);
+
         $result = $provider->chat($fakeProject, $locale, $data['message']);
-        $content = \App\Services\AiProvider::extractContent($result);
+        $content = \App\Services\AiProvider::extractContent($result) ?: 'Sorry, no response.';
+
+        $session->messages()->create([
+            'tenant_id' => $request->user()->tenant_id,
+            'role' => 'bot',
+            'content' => $content,
+        ]);
+
         return response()->json([
             'ok' => true,
-            'reply' => $content ?: 'Sorry, no response.',
+            'reply' => $content,
             'meta' => [
                 'input_tokens'  => (int)($result['input_tokens'] ?? 0),
                 'output_tokens' => (int)($result['output_tokens'] ?? 0),
@@ -41,3 +67,4 @@ class ChatController extends Controller
         ]);
     }
 }
+
