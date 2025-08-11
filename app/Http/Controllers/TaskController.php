@@ -126,11 +126,6 @@ class TaskController extends Controller
         $payload = $version->payload ?? [];
         $content = $payload['content'] ?? '';
 
-        if (!$content && isset($payload['chunks'][0]['raw'])) {
-            $raw = $payload['chunks'][0]['raw'];
-            $content = $raw['choices'][0]['message']['content'] ?? ($raw['content'][0]['text'] ?? '');
-        }
-
         $decoded = null;
         try {
             $decoded = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
@@ -142,16 +137,19 @@ class TaskController extends Controller
         }
 
         if (is_array($decoded)) {
+            $html = '';
+            if (isset($decoded['summary'])) {
+                $html .= '<pre>'.e($decoded['summary']).'</pre>';
+            }
             if (isset($decoded['mindmap']) && is_array($decoded['mindmap'])) {
-                $html = '<ul>';
+                $html .= '<ul>';
                 foreach ($decoded['mindmap'] as $item) {
                     $html .= '<li>'.e($item).'</li>';
                 }
                 $html .= '</ul>';
-                return response($html);
             }
-            if (isset($decoded['summary'])) {
-                return response('<pre>'.e($decoded['summary']).'</pre>');
+            if ($html !== '') {
+                return response($html);
             }
         }
 

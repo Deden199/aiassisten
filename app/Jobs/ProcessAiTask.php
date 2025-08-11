@@ -214,7 +214,8 @@ class ProcessAiTask implements ShouldQueue
         }
 
         $payloadChunks = [];
-        $contents = [];
+        $summaries = [];
+        $mindmap = [];
 
         foreach ($chunks as $index => $chunk) {
             $result = ($this->useCache ? $provider : $provider->withoutCache())
@@ -232,7 +233,25 @@ class ProcessAiTask implements ShouldQueue
             $piece = AiProvider::extractContent($result);
 
             if (is_string($piece) && $piece !== '') {
-                $contents[] = trim($piece);
+                try {
+                    $decoded = json_decode($piece, true, 512, JSON_THROW_ON_ERROR);
+
+                    $pieceSummary = data_get($decoded, 'summary');
+                    if (is_string($pieceSummary) && $pieceSummary !== '') {
+                        $summaries[] = trim($pieceSummary);
+                    }
+
+                    $pieceMindmap = data_get($decoded, 'mindmap');
+                    if (is_array($pieceMindmap)) {
+                        foreach ($pieceMindmap as $item) {
+                            if (is_string($item) && trim($item) !== '') {
+                                $mindmap[] = trim($item);
+                            }
+                        }
+                    }
+                } catch (Throwable $e) {
+                    // ignore invalid json pieces
+                }
             }
 
             $payloadChunks[] = [
@@ -247,7 +266,26 @@ class ProcessAiTask implements ShouldQueue
             $costCents    += (int) ($result['cost_cents']    ?? 0);
         }
 
-        $combinedContent = trim(implode("\n\n", array_filter($contents)));
+        $mindmap = array_values(array_unique(array_filter($mindmap)));
+        $summaries = array_values(array_filter($summaries));
+
+        $combined = [];
+        if (!empty($summaries)) {
+            $combined['summary'] = trim(implode("\n\n", $summaries));
+        }
+        if (!empty($mindmap)) {
+            $combined['mindmap'] = $mindmap;
+        }
+
+        if (empty($combined)) {
+            $this->task->update([
+                'status'  => 'failed',
+                'message' => 'invalid json',
+            ]);
+            return;
+        }
+
+        $combinedContent = json_encode($combined, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         $this->task->update([
             'status'        => 'done', // <— konsisten dengan UI (queued|running|done|failed)

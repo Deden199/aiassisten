@@ -20,21 +20,11 @@
                 if (d.status === 'done') {
                     this.versions = d.versions.map(v => {
                         let content = v.payload?.content || '';
-                        let raw = v.payload?.chunks?.[0]?.raw;
-                        if (!content && raw) {
-                            content = raw?.choices?.[0]?.message?.content || raw?.content?.[0]?.text || '';
-                        }
                         let parsed = {};
                         try {
                             parsed = content ? JSON.parse(content) : {};
                         } catch (e) {
-                            if (this.type === 'summarize') {
-                                parsed = { summary: content };
-                            } else if (this.type === 'mindmap') {
-                                parsed = { mindmap: content.split('\n') };
-                            } else {
-                                parsed = { title: content };
-                            }
+                            parsed = {};
                         }
                         return { ...v, parsed };
                     });
