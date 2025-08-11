@@ -6,6 +6,7 @@ use App\Exceptions\DocumentParseException;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\IOFactory;
 use Psr\Log\LoggerInterface;
+use Spatie\PdfToText\Exceptions\CouldNotExtractText;
 use Spatie\PdfToText\Pdf;
 
 class DocumentParser
@@ -32,7 +33,17 @@ class DocumentParser
                 'message' => $e->getMessage(),
             ]);
 
-            throw new DocumentParseException("Failed to parse document at {$path}", 0, $e);
+            $hint = $e->getMessage();
+            if ($e instanceof CouldNotExtractText) {
+                $hint = __('PDF tool missing. Please install the necessary binary.');
+            }
+
+            throw new DocumentParseException(
+                __("Failed to parse document at :path", ['path' => $path]),
+                $hint,
+                0,
+                $e
+            );
         }
     }
 
