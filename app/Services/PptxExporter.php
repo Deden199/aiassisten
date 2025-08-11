@@ -27,17 +27,20 @@ class PptxExporter
             $shape->getActiveParagraph()->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
             $title = is_string($data['title'] ?? null) ? $data['title'] : 'Slide ' . ($index + 1);
-            $shape->createTextRun($title)->getFont()->setBold(true)->setSize(24);
+            $shape->createTextRun($this->sanitize($title))->getFont()->setBold(true)->setSize(24);
             $shape->createBreak();
 
             $bullets = $data['bullets'] ?? $data['bullet_points'] ?? [];
             if (is_string($bullets)) {
                 $bullets = preg_split("/\r?\n/", $bullets);
             }
+            $bullets = array_values(array_filter(array_map(function ($bullet) {
+                return is_string($bullet) ? $this->sanitize($bullet) : null;
+            }, is_array($bullets) ? $bullets : []), function ($bullet) {
+                return $bullet !== null && $bullet !== '';
+            }));
+
             foreach ($bullets as $bullet) {
-                if (trim($bullet) === '') {
-                    continue;
-                }
                 $paragraph = $shape->createParagraph();
                 $paragraph->setBulletStyle(new Bullet());
                 $paragraph->createTextRun($bullet)->getFont()->setSize(18);
@@ -48,7 +51,11 @@ class PptxExporter
                 $lines = is_array($notes) ? $notes : preg_split("/\r?\n/", $notes);
                 $noteShape = $slide->getNote()->createRichTextShape();
                 foreach ($lines as $line) {
-                    $noteShape->createTextRun($line);
+                    $text = is_string($line) ? $this->sanitize($line) : null;
+                    if ($text === null || $text === '') {
+                        continue;
+                    }
+                    $noteShape->createTextRun($text);
                     $noteShape->createBreak();
                 }
             }
@@ -65,5 +72,10 @@ class PptxExporter
             'file_disk' => $disk,
             'file_path' => $path,
         ]);
+    }
+
+    private function sanitize(string $text): string
+    {
+        return trim(strip_tags($text));
     }
 }
