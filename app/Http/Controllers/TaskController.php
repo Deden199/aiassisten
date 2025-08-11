@@ -96,16 +96,6 @@ class TaskController extends Controller
         return $this->makeTask($r, $project, 'slides', $r->input('locale','en'));
     }
 
-    public function preview(Request $r, AiTaskVersion $version)
-    {
-        $project = $version->task->project;
-        abort_unless($project->tenant_id === $r->user()->tenant_id && $project->user_id === $r->user()->id, 403);
-
-        $version->makeVisible('payload');
-
-        return view('versions.preview', ['version' => $version]);
-    }
-
     public function download(Request $r, AiTaskVersion $version, PptxExporter $exporter)
     {
         $project = $version->task->project;
@@ -123,6 +113,12 @@ class TaskController extends Controller
     {
         $project = $version->task->project;
         abort_unless($project->tenant_id === $r->user()->tenant_id && $project->user_id === $r->user()->id, 403);
+
+        // Slides have a dedicated preview view
+        if ($version->task->type === 'slides') {
+            $version->makeVisible('payload');
+            return view('versions.preview', ['version' => $version]);
+        }
 
         $payload = $version->payload ?? [];
         $content = $payload['content'] ?? '';
