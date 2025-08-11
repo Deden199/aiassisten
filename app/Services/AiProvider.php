@@ -40,11 +40,23 @@ class AiProvider
         $prompt = "Using locale {$locale}, generate a {$type} in JSON for the following text:\n\n{$text}";
 
         if ($this->provider === 'anthropic' && !env('ANTHROPIC_API_KEY')) {
-            return ['raw' => ['error' => 'missing anthropic api key'], 'input_tokens' => 0, 'output_tokens' => 0, 'cost_cents' => 0];
+            return [
+                'error'        => ['status' => null, 'body' => 'missing anthropic api key'],
+                'raw'          => ['error' => 'missing anthropic api key'],
+                'input_tokens' => 0,
+                'output_tokens' => 0,
+                'cost_cents'   => 0,
+            ];
         }
 
         if ($this->provider === 'openai' && !env('OPENAI_API_KEY')) {
-            return ['raw' => ['error' => 'missing openai api key'], 'input_tokens' => 0, 'output_tokens' => 0, 'cost_cents' => 0];
+            return [
+                'error'        => ['status' => null, 'body' => 'missing openai api key'],
+                'raw'          => ['error' => 'missing openai api key'],
+                'input_tokens' => 0,
+                'output_tokens' => 0,
+                'cost_cents'   => 0,
+            ];
         }
 
         try {
