@@ -56,7 +56,10 @@ class TaskController extends Controller
         );
 
         $versions = $task->versions()->latest()->get();
-        $versions->each(fn ($v) => $v->preview_url = route('versions.preview', $v));
+        $versions->each(function ($v) {
+            $v->preview_url = route('versions.preview', $v);
+            $v->download_url = route('versions.download', $v);
+        });
         $downloadUrl = null;
 
         // kalau slides & sudah ada file, kirim link unduh

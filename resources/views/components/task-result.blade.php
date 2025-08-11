@@ -34,9 +34,9 @@
                     if (this.versions.length > 0) {
                         this.version = this.versions[0];
                         this.result = this.versions[0].parsed;
-                        this.downloadUrl = this.versions[0].file_path || d.download_url;
                         this.openPreview = `preview-version-${this.versions[0].id}`;
                     }
+                    this.downloadUrl = d.download_url;
                     return;
                 }
                 if (d.status === 'failed') return;
@@ -68,8 +68,8 @@
                                 class="text-xs text-blue-600 dark:text-blue-400 underline"
                                 @click="openPreview = openPreview === `preview-version-${v.id}` ? null : `preview-version-${v.id}`"
                             >Preview</button>
-                            <template x-if="v.file_path">
-                                <a :href="v.file_path" class="text-xs text-violet-600 dark:text-violet-400 underline">Download PPTX</a>
+                            <template x-if="v.download_url">
+                                <a :href="v.download_url" class="text-xs text-violet-600 dark:text-violet-400 underline">Download PPTX</a>
                             </template>
                         </div>
                     </div>
