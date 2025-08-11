@@ -14,8 +14,8 @@
             .then(d => {
                 this.status = d.status;
                 this.message = d.message;
-                this.downloadUrl = d.download_url;
                 if (d.status === 'done') {
+                    this.downloadUrl = d.download_url;
                     if (d.versions.length > 0) {
                         this.version = d.versions[0];
                         let content = this.version.payload?.content || '';
