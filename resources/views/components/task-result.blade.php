@@ -5,8 +5,10 @@
     status: null,
     message: null,
     version: null,
+    versions: [],
     result: {},
     downloadUrl: null,
+    openPreview: null,
     // Poll until task finishes. Consider caching trimmed payload for faster access.
     poll() {
         fetch(this.url)
@@ -15,19 +17,25 @@
                 this.status = d.status;
                 this.message = d.message;
                 if (d.status === 'done') {
-                    this.downloadUrl = d.download_url;
-                    if (d.versions.length > 0) {
-                        this.version = d.versions[0];
-                        let content = this.version.payload?.content || '';
-                        let raw = this.version.payload?.chunks?.[0]?.raw;
+                    this.versions = d.versions.map(v => {
+                        let content = v.payload?.content || '';
+                        let raw = v.payload?.chunks?.[0]?.raw;
                         if (!content && raw) {
                             content = raw?.choices?.[0]?.message?.content || raw?.content?.[0]?.text || '';
                         }
+                        let parsed = {};
                         try {
-                            this.result = content ? JSON.parse(content) : {};
+                            parsed = content ? JSON.parse(content) : {};
                         } catch (e) {
-                            this.result = { summary: content };
+                            parsed = { title: content };
                         }
+                        return { ...v, parsed };
+                    });
+                    if (this.versions.length > 0) {
+                        this.version = this.versions[0];
+                        this.result = this.versions[0].parsed;
+                        this.downloadUrl = this.versions[0].file_path || d.download_url;
+                        this.openPreview = `preview-version-${this.versions[0].id}`;
                     }
                     return;
                 }
@@ -48,6 +56,34 @@
     </template>
     <template x-if="status === 'done' && downloadUrl">
         <a :href="downloadUrl" class="text-sm text-violet-600 dark:text-violet-400 underline">Download slides</a>
+    </template>
+    <template x-if="status === 'done' && versions.length">
+        <div class="space-y-2">
+            <template x-for="v in versions" :key="v.id">
+                <div class="border rounded p-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium" x-text="v.name || ('Version ' + v.id)"></span>
+                        <div class="flex items-center gap-2">
+                            <button
+                                class="text-xs text-blue-600 dark:text-blue-400 underline"
+                                @click="openPreview = openPreview === `preview-version-${v.id}` ? null : `preview-version-${v.id}`"
+                            >Preview</button>
+                            <template x-if="v.file_path">
+                                <a :href="v.file_path" class="text-xs text-violet-600 dark:text-violet-400 underline">Download PPTX</a>
+                            </template>
+                        </div>
+                    </div>
+                    <div x-show="openPreview === `preview-version-${v.id}`" :id="`preview-version-${v.id}`" class="mt-2">
+                        <h4 class="text-sm font-semibold" x-text="v.parsed.title"></h4>
+                        <ul class="list-disc ml-4 text-sm text-gray-700 dark:text-gray-300">
+                            <template x-for="(b, i) in v.parsed.bullets" :key="i">
+                                <li x-text="b"></li>
+                            </template>
+                        </ul>
+                    </div>
+                </div>
+            </template>
+        </div>
     </template>
     <template x-if="status && status !== 'done'">
         <div class="flex flex-col gap-1">
