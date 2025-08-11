@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AiProject;
 use App\Services\DocumentParser;
+use App\Exceptions\DocumentParseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -43,7 +44,12 @@ class ProjectController extends Controller
         if ($r->hasFile('file')) {
             $filename = $r->file('file')->getClientOriginalName();
             $path = $r->file('file')->store("uploads/{$r->user()->tenant_id}", $disk);
-            $text = $parser->parse($disk, $path);
+
+            try {
+                $text = $parser->parse($disk, $path);
+            } catch (DocumentParseException $e) {
+                return back()->withErrors(['file' => 'Unable to parse the uploaded document.']);
+            }
         }
 
         AiProject::create([
