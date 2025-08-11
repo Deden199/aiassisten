@@ -56,4 +56,6 @@ return [
         'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
     ],
 
+    'pdftotext_binary' => env('PDFTOTEXT_BINARY', 'pdftotext'),
+
 ];

@@ -6,6 +6,7 @@ use App\Exceptions\DocumentParseException;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\IOFactory;
 use Psr\Log\LoggerInterface;
+use Smalot\PdfParser\Parser as PdfParser;
 use Spatie\PdfToText\Pdf;
 
 class DocumentParser
@@ -21,7 +22,7 @@ class DocumentParser
 
         try {
             return match ($ext) {
-                'pdf' => Pdf::getText($fullPath),
+                'pdf' => $this->parsePdf($fullPath),
                 'doc', 'docx' => $this->parseWord($fullPath),
                 'txt' => (string) Storage::disk($disk)->get($path),
                 default => '',
@@ -50,5 +51,18 @@ class DocumentParser
         }
 
         return trim($text);
+    }
+
+    protected function parsePdf(string $fullPath): string
+    {
+        try {
+            Pdf::setPdfBinary(config('services.pdftotext_binary'));
+
+            return Pdf::getText($fullPath);
+        } catch (\Throwable $e) {
+            $parser = new PdfParser();
+
+            return $parser->parseFile($fullPath)->getText();
+        }
     }
 }
