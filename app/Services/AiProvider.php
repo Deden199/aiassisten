@@ -38,6 +38,7 @@ class AiProvider
         }
 
         $text = mb_convert_encoding($text ?? '', 'UTF-8', 'UTF-8');
+        $sanitizedText = str_replace(['{{', '}}'], ['{', '}'], $text);
 
         if ($type === 'slides') {
             $template = $project->slideTemplate ? $project->slideTemplate->toArray() : \App\Models\SlideTemplate::defaultTheme();
@@ -139,11 +140,23 @@ SOURCE MATERIAL (summarize & transform, do not copy verbatim unless short terms)
 LANGUAGE: {$locale}
 Return JSON only.
 SOURCE:
-{$text}
+{$sanitizedText}
 EOT;
 
+            $prompt = strtr($prompt, [
+                '{{locale}}' => $locale,
+                '{{slides_min}}' => (string) $slidesMin,
+                '{{slides_max}}' => (string) $slidesMax,
+                '{{theme_json}}' => $themeJson,
+                '{{source_text}}' => $sanitizedText,
+            ]);
+
         } else {
-            $prompt = "Using locale {$locale}, generate a {$type} in JSON for the following text:\n\n{$text}";
+            $prompt = "Using locale {$locale}, generate a {$type} in JSON for the following text:\n\n{$sanitizedText}";
+        }
+
+        if (preg_match('/{{[^}]+}}/', $prompt)) {
+            throw new \RuntimeException('Unresolved prompt placeholders');
         }
 
         if ($this->provider === 'anthropic' && !env('ANTHROPIC_API_KEY')) {
