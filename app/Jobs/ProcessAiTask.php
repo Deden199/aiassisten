@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\AiTask;
 use App\Models\AiTaskVersion;
 use App\Models\UsageLog;
+use App\Models\UsageCounter;
 use App\Services\AiProvider;
 use App\Services\DocumentParser;
 use App\Support\TextChunker;
@@ -169,6 +170,16 @@ class ProcessAiTask implements ShouldQueue
                 $project->tenant->increment('usage_cost_cents', (int) $costCents);
             }
 
+            $subscription = $project->tenant->subscription ?? null;
+            $counter = UsageCounter::currentFor(
+                $project->user,
+                $subscription?->current_period_start,
+                $subscription?->current_period_end
+            );
+            $counter->increment('tokens_used', (int) $totalTokens);
+            $counter->increment('requests_used');
+            $counter->increment('cost_cents', (int) $costCents);
+
             return;
         }
 
@@ -250,6 +261,16 @@ class ProcessAiTask implements ShouldQueue
         if ($costCents > 0 && Schema::hasColumn('tenants', 'usage_cost_cents') && $project->tenant) {
             $project->tenant->increment('usage_cost_cents', (int) $costCents);
         }
+
+        $subscription = $project->tenant->subscription ?? null;
+        $counter = UsageCounter::currentFor(
+            $project->user,
+            $subscription?->current_period_start,
+            $subscription?->current_period_end
+        );
+        $counter->increment('tokens_used', (int) $totalTokens);
+        $counter->increment('requests_used');
+        $counter->increment('cost_cents', (int) $costCents);
     }
 
     private function fallbackBullets(string $text): array

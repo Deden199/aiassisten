@@ -26,7 +26,7 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
 
     // Tasks (throttled + cost cap)
-    Route::middleware(['throttle:tasks', 'cost.cap'])->group(function () {
+    Route::middleware(['throttle:tasks', 'cost.cap', \App\Http\Middleware\EnsureActiveSubscriptionAndQuota::class])->group(function () {
         Route::post('/projects/{project}/tasks/summarize', [TaskController::class, 'summarize'])->name('tasks.summarize');
         Route::match(['get', 'post'], '/projects/{project}/tasks/mindmap', [TaskController::class, 'mindmap'])->name('tasks.mindmap');
         Route::post('/projects/{project}/tasks/slides', [TaskController::class, 'slides'])->name('tasks.slides');
@@ -54,7 +54,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Billing
     Route::get('/billing', [BillingController::class, 'index'])->name('billing');
-    Route::post('/billing/checkout', [BillingController::class, 'checkout'])->name('billing.checkout');
+    Route::post('/billing/subscribe', [BillingController::class, 'subscribe'])->name('billing.subscribe');
     Route::get('/billing/invoice/{invoice}', [BillingController::class, 'invoice'])->name('billing.invoice');
 
     // Logout

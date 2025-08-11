@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Plan;
+use App\Models\Price;
+use App\Models\Invoice;
 use Illuminate\Http\Request;
 use Stripe\StripeClient;
 use PayPalCheckoutSdk\Core\SandboxEnvironment;
@@ -14,26 +15,21 @@ class BillingController extends Controller
     public function index(Request $request)
     {
         $subscription = $request->user()->tenant->subscription ?? null;
-        $invoices = [];
-
-        if ($subscription && $subscription->gateway === 'stripe' && $subscription->gateway_sub_id) {
-            $stripe = new StripeClient(config('services.stripe.secret'));
-            $stripeInvoices = $stripe->invoices->all([
-                'subscription' => $subscription->gateway_sub_id,
-            ]);
-            $invoices = $stripeInvoices->data ?? [];
-        }
+        $invoices = Invoice::where('tenant_id', $request->user()->tenant_id)
+            ->latest()
+            ->get();
 
         return view('billing', compact('subscription', 'invoices'));
     }
 
-    public function checkout(Request $request)
+    public function subscribe(Request $request)
     {
-        $plan = Plan::findOrFail($request->input('plan_id'));
+        $price = Price::where('id', $request->input('price_id'))
+            ->where('is_active', true)
+            ->firstOrFail();
         $tenant = $request->user()->tenant;
-        $gateway = $request->input('gateway', 'stripe');
 
-        if ($gateway === 'paypal') {
+        if ($price->provider === 'paypal') {
             $environment = new SandboxEnvironment(
                 config('services.paypal.client_id'),
                 config('services.paypal.secret')
@@ -42,46 +38,32 @@ class BillingController extends Controller
 
             $ppRequest = new SubscriptionsCreateRequest();
             $ppRequest->body = [
-                'plan_id' => $request->input('paypal_plan_id'),
+                'plan_id' => $price->provider_price_id,
                 'application_context' => [
-                    'return_url' => route('billing'),
-                    'cancel_url' => route('billing'),
+                    'return_url' => config('billing.success_url'),
+                    'cancel_url' => config('billing.cancel_url'),
                 ],
                 'custom_id' => $tenant->id,
             ];
             $response = $client->execute($ppRequest);
+            $approveUrl = collect($response->result->links ?? [])
+                ->firstWhere('rel', 'approve')->href ?? config('billing.cancel_url');
 
-            return redirect($response->result->links[0]->href ?? route('billing'));
+            return redirect($approveUrl);
         }
-
-        $price = $plan->prices()->first();
 
         $stripe = new StripeClient(config('services.stripe.secret'));
         $session = $stripe->checkout->sessions->create([
             'mode' => 'subscription',
             'line_items' => [
                 [
-                    'price_data' => [
-                        'currency' => $price->currency,
-                        'unit_amount' => $price->amount_cents,
-                        'product_data' => ['name' => $plan->code],
-                        'recurring' => ['interval' => 'month'],
-                    ],
+                    'price' => $price->provider_price_id,
                     'quantity' => 1,
                 ],
             ],
-            'metadata' => [
-                'tenant_id' => $tenant->id,
-                'plan_id' => $plan->id,
-            ],
-            'subscription_data' => [
-                'metadata' => [
-                    'tenant_id' => $tenant->id,
-                    'plan_id' => $plan->id,
-                ],
-            ],
-            'success_url' => route('billing'),
-            'cancel_url' => route('billing'),
+            'client_reference_id' => $tenant->id,
+            'success_url' => config('billing.success_url'),
+            'cancel_url' => config('billing.cancel_url'),
         ]);
 
         return redirect($session->url);
@@ -89,12 +71,16 @@ class BillingController extends Controller
 
     public function invoice(Request $request, string $invoice)
     {
-        $subscription = $request->user()->tenant->subscription ?? null;
+        $inv = Invoice::where('tenant_id', $request->user()->tenant_id)
+            ->where('id', $invoice)
+            ->first();
 
-        if ($subscription && $subscription->gateway === 'stripe') {
-            $stripe = new StripeClient(config('services.stripe.secret'));
-            $inv = $stripe->invoices->retrieve($invoice, []);
-            return redirect($inv->hosted_invoice_url);
+        if ($inv && $inv->hosted_url) {
+            return redirect($inv->hosted_url);
+        }
+
+        if ($inv && $inv->pdf_url) {
+            return redirect($inv->pdf_url);
         }
 
         return redirect()->route('billing');

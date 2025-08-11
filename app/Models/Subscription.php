@@ -13,12 +13,23 @@ class Subscription extends Model
     protected $fillable = [
         'tenant_id',
         'plan_id',
-        'gateway',
-        'gateway_sub_id',
+        'provider',
+        'provider_subscription_id',
+        'provider_customer_id',
+        'latest_invoice_id',
         'status',
         'current_period_start',
         'current_period_end',
         'cancel_at_period_end',
+        'trial_end_at',
+        'grace_until',
+    ];
+
+    protected $casts = [
+        'current_period_start' => 'datetime',
+        'current_period_end' => 'datetime',
+        'trial_end_at' => 'datetime',
+        'grace_until' => 'datetime',
     ];
 
     protected static function booted(): void
