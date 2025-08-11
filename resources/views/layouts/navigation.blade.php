@@ -13,36 +13,12 @@
 
         <!-- Navigation Links -->
         <div class="hidden sm:flex sm:items-center sm:ms-10 gap-6">
-          <a href="{{ Route::has('dashboard') ? route('dashboard') : url('/') }}"
-             class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('dashboard') ? 'underline decoration-yellow-300' : '' }}">
-            Dashboard
-          </a>
-
-          @if(Route::has('dashboard'))
-          <a href="{{ route('dashboard') }}" class="text-white/90 hover:text-yellow-300 font-medium">
-            Projects
-          </a>
-          @endif
-
-          @if (Route::has('billing.index'))
-          <a href="{{ route('billing.index') }}" class="text-white/90 hover:text-yellow-300 font-medium">
-            Billing
-          </a>
-          @endif
-
-          @if (Route::has('ui.kit'))
-          <a href="{{ route('ui.kit') }}" class="text-white/90 hover:text-yellow-300 font-medium">
-            UI Kit
-          </a>
-          @endif
-
-          @auth
-            @if (auth()->user()->role === 'admin' && Route::has('admin.dashboard'))
-            <a href="{{ route('admin.dashboard') }}" class="text-white/90 hover:text-yellow-300 font-medium">
-              Admin
-            </a>
-            @endif
-          @endauth
+          <a href="{{ route('dashboard') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('dashboard') ? 'underline decoration-yellow-300' : '' }}">Dashboard</a>
+          <a href="{{ route('projects.index') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('projects.*') ? 'underline decoration-yellow-300' : '' }}">Projects</a>
+          <a href="{{ route('billing') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('billing') ? 'underline decoration-yellow-300' : '' }}">Billing</a>
+          @can('admin')
+            <a href="{{ route('admin.slide-templates.index') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('admin.slide-templates.*') ? 'underline decoration-yellow-300' : '' }}">Slide Templates</a>
+          @endcan
         </div>
       </div>
 
@@ -136,32 +112,12 @@
   <!-- Responsive Navigation Menu -->
   <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
     <div class="pt-2 pb-3 space-y-1 px-4">
-      <a href="{{ Route::has('dashboard') ? route('dashboard') : url('/') }}"
-         class="block px-3 py-2 rounded-lg hover:bg-white/10">
-        Dashboard
-      </a>
-      @if(Route::has('dashboard'))
-      <a href="{{ route('dashboard') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">
-        Projects
-      </a>
-      @endif
-      @if (Route::has('billing.index'))
-      <a href="{{ route('billing.index') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">
-        Billing
-      </a>
-      @endif
-      @if (Route::has('ui.kit'))
-      <a href="{{ route('ui.kit') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">
-        UI Kit
-      </a>
-      @endif
-      @auth
-        @if (auth()->user()->role === 'admin' && Route::has('admin.dashboard'))
-        <a href="{{ route('admin.dashboard') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">
-          Admin
-        </a>
-        @endif
-      @endauth
+      <a href="{{ route('dashboard') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Dashboard</a>
+      <a href="{{ route('projects.index') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Projects</a>
+      <a href="{{ route('billing') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Billing</a>
+      @can('admin')
+        <a href="{{ route('admin.slide-templates.index') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Slide Templates</a>
+      @endcan
     </div>
 
     <!-- Responsive Settings Options -->

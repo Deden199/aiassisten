@@ -20,6 +20,7 @@ Route::post('/locale', [LocaleController::class, 'update'])->name('locale');
 Route::middleware(['auth'])->group(function () {
 
     Route::get('/dashboard', [ProjectController::class, 'index'])->name('dashboard');
+    Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');
 
     // Projects
     Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');

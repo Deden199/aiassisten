@@ -60,15 +60,48 @@ class AiProvider
                 ]
             ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-            $prompt = "Gunakan theme dari template berikut (override default): {$themeJson}.\n";
-            $prompt .= "Buat {$slidesMin}-{$slidesMax} slides.\n";
-            if ($requireBullets) {
-                $prompt .= "Setiap slide WAJIB 3-6 bullets.\n";
-            }
-            $prompt .= "Gunakan background default jika slide tidak mendefinisikan background.\n";
-            $prompt .= "Output JSON VALID SAJA (tanpa teks lain).\n";
-            $prompt .= "Bahasa sesuai {$locale}.\n";
-            $prompt .= "Sumber: {$text}";
+            $prompt = <<<EOT
+You are a presentation designer. Return a **single valid JSON object** only (no extra text, no markdown).
+
+REQUIRED THEME (override defaults):
+{$themeJson}
+
+REQUIREMENTS:
+- Create {$slidesMin}-{$slidesMax} slides.
+- Each slide MUST include:
+  - "title": short string
+  - "bullets": 3–6 concise bullets (no numbering)
+  - "background": { "type":"solid|gradient|image", "color":"#HEX", "gradient":{ "from":"#HEX", "to":"#HEX" }, "image_url": null|url }
+  - "colors": { "title":"#HEX", "bullets":"#HEX", "accent":"#HEX" }
+- Use the default background if slide background is not specified.
+- Language: {$locale}.
+- Output **JSON only**.
+
+SCHEMA:
+{
+  "theme": {
+    "palette": { "background":"#0B1220","primary":"#60A5FA","secondary":"#A78BFA","accent":"#34D399" },
+    "font": { "family": null, "title_size": 44, "body_size": 24, "title_weight": "bold", "body_weight": "normal" },
+    "layout": {
+      "title": { "x":30,"y":30,"w":900,"h":80,"align":"left" },
+      "bullets": { "x":40,"y":130,"w":900,"h":400,"line_spacing":1.25,"indent":10 }
+    },
+    "background_default": { "type":"gradient","color":"#0B1220","gradient":{"from":"#0EA5E9","to":"#111827"},"image_url": null }
+  },
+  "slides": [
+    {
+      "title": "string",
+      "bullets": ["string","string","string"],
+      "notes": "optional",
+      "background": { "type":"solid","color":"#0B1220","gradient":{"from":"#...","to":"#..."},"image_url": null },
+      "colors": { "title":"#FFFFFF","bullets":"#D1D5DB","accent":"#34D399" }
+    }
+  ]
+}
+
+SOURCE:
+{$text}
+EOT;
         } else {
             $prompt = "Using locale {$locale}, generate a {$type} in JSON for the following text:\n\n{$text}";
         }
@@ -181,14 +214,32 @@ class AiProvider
         }
 
         if (isset($data['choices'][0]['message']['content']) && is_string($data['choices'][0]['message']['content'])) {
-            return trim($data['choices'][0]['message']['content']);
+            $content = trim($data['choices'][0]['message']['content']);
+            if (!self::isValidJson($content) && preg_match('/\{.*\}/s', $content, $m) && self::isValidJson($m[0])) {
+                return trim($m[0]);
+            }
+            return $content;
         }
 
         if (isset($data['choices'][0]['text']) && is_string($data['choices'][0]['text'])) {
-            return trim($data['choices'][0]['text']);
+            $content = trim($data['choices'][0]['text']);
+            if (!self::isValidJson($content) && preg_match('/\{.*\}/s', $content, $m) && self::isValidJson($m[0])) {
+                return trim($m[0]);
+            }
+            return $content;
         }
 
         return null;
+    }
+
+    private static function isValidJson(string $json): bool
+    {
+        try {
+            json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+            return true;
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     private function calculateCost(string $model, int $input, int $output): int

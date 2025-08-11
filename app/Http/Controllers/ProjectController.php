@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AiProject;
+use App\Models\SlideTemplate;
 use App\Services\DocumentParser;
 use App\Exceptions\DocumentParseException;
 use Illuminate\Http\Request;
@@ -26,9 +27,10 @@ class ProjectController extends Controller
             ->latest()
             ->paginate(8);
 
-        $templates = \App\Models\SlideTemplate::select('id','name')->where('tenant_id', $request->user()->tenant_id)->get();
-
-        return view('dashboard', compact('projects','templates'));
+        return view('dashboard', [
+            'projects' => $projects,
+            'templates' => SlideTemplate::orderBy('name')->get(['id','name']),
+        ]);
     }
 
     public function store(Request $r, DocumentParser $parser)

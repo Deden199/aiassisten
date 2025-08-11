@@ -24,7 +24,13 @@ class PptxExporter
 
     public function export(AiTaskVersion $version): void
     {
-        $payload = $version->payload ?? [];
+        $rawPayload = $version->payload ?? [];
+        if (isset($rawPayload['content']) && is_string($rawPayload['content'])) {
+            $decoded = json_decode($rawPayload['content'], true);
+            $payload = is_array($decoded) ? $decoded : [];
+        } else {
+            $payload = $rawPayload;
+        }
         $theme = $payload['theme'] ?? SlideTemplate::defaultTheme();
         $slides = $payload['slides'] ?? $payload;
         $presentation = new PhpPresentation();
@@ -57,7 +63,7 @@ class PptxExporter
             $titleFont->setSize($theme['font']['title_size'] ?? 24);
             $titleFont->setBold(($theme['font']['title_weight'] ?? 'bold') === 'bold');
             $titleColor = $data['colors']['title'] ?? $theme['palette']['primary'] ?? '#000000';
-            $titleFont->setColor(new Color($this->hexToArgb($titleColor)));
+            $titleFont->setColor(new Color($this->hexToArgb($titleColor, $theme['palette']['primary'] ?? '#000000')));
 
             $bulletLayout = $theme['layout']['bullets'] ?? ['x'=>40,'y'=>130,'w'=>900,'h'=>400];
             $bulletShape = $slide->createRichTextShape();
@@ -75,6 +81,7 @@ class PptxExporter
             }, is_array($bullets) ? $bullets : []), function ($bullet) {
                 return $bullet !== null && $bullet !== '';
             }));
+            $bullets = array_slice($bullets, 0, 6);
 
             foreach ($bullets as $bullet) {
                 $paragraph = $bulletShape->createParagraph();
@@ -91,7 +98,7 @@ class PptxExporter
                 $font->setSize($theme['font']['body_size'] ?? 18);
                 $font->setBold(($theme['font']['body_weight'] ?? 'normal') === 'bold');
                 $color = $data['colors']['bullets'] ?? $theme['palette']['secondary'] ?? '#000000';
-                $font->setColor(new Color($this->hexToArgb($color)));
+                $font->setColor(new Color($this->hexToArgb($color, $theme['palette']['secondary'] ?? '#000000')));
             }
 
             $notes = $data['notes'] ?? null;
@@ -131,11 +138,14 @@ class PptxExporter
         return trim(strip_tags($text));
     }
 
-    private function hexToArgb(string $hex): string
+    private function hexToArgb(string $hex, string $fallback = '#111827'): string
     {
         $hex = ltrim($hex, '#');
         if (!preg_match('/^[0-9a-fA-F]{6}$/', $hex)) {
-            $hex = '111827';
+            $hex = ltrim($fallback, '#');
+            if (!preg_match('/^[0-9a-fA-F]{6}$/', $hex)) {
+                $hex = '111827';
+            }
         }
         return 'FF' . strtoupper($hex);
     }
@@ -190,7 +200,7 @@ class PptxExporter
 
         $color = $bg['color'] ?? ($theme['background_default']['color'] ?? '#FFFFFF');
         $background = new BgColor();
-        $background->setColor(new Color($this->hexToArgb($color)));
+        $background->setColor(new Color($this->hexToArgb($color, $theme['background_default']['color'] ?? '#FFFFFF')));
         $slide->setBackground($background);
     }
 
