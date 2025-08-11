@@ -55,6 +55,10 @@ class ChatController extends Controller
             ->get(['role', 'content'])
             ->reverse()
             ->values()
+            ->map(fn($m) => [
+                'role' => $m['role'] === 'bot' ? 'assistant' : $m['role'],
+                'content' => $m['content'],
+            ])
             ->toArray();
 
         $result = $provider->chat($fakeProject, $locale, $messages);
