@@ -2,6 +2,7 @@
 
 <div x-data="{
     url: '{{ route('tasks.show', [$project, $task]) }}',
+    type: '{{ $task->type }}',
     status: null,
     message: null,
     version: null,
@@ -27,7 +28,13 @@
                         try {
                             parsed = content ? JSON.parse(content) : {};
                         } catch (e) {
-                            parsed = { title: content };
+                            if (this.type === 'summarize') {
+                                parsed = { summary: content };
+                            } else if (this.type === 'mindmap') {
+                                parsed = { mindmap: content.split('\n') };
+                            } else {
+                                parsed = { title: content };
+                            }
                         }
                         return { ...v, parsed };
                     });
