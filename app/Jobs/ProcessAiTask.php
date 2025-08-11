@@ -52,21 +52,20 @@ class ProcessAiTask implements ShouldQueue
             $chunks = [''];
         }
 
-        $payloadChunks = [];
-        $contents = [];
-        $slides = [];
         $inputTokens = 0;
         $outputTokens = 0;
         $costCents = 0;
 
-        foreach ($chunks as $index => $chunk) {
-            $result = $provider->generate($project, $this->task->type, $this->locale, $chunk);
+        if ($this->task->type === 'slides') {
+            $slides = [];
 
-            $piece = $result['content']
-                ?? $result['text']
-                ?? ($result['raw']['choices'][0]['message']['content'] ?? ($result['raw']['content'][0]['text'] ?? null));
+            foreach ($chunks as $chunk) {
+                $result = $provider->generate($project, $this->task->type, $this->locale, $chunk);
 
-            if ($this->task->type === 'slides') {
+                $piece = $result['content']
+                    ?? $result['text']
+                    ?? ($result['raw']['choices'][0]['message']['content'] ?? ($result['raw']['content'][0]['text'] ?? null));
+
                 $decoded = [];
                 if (is_string($piece) && $piece !== '') {
                     try {
@@ -78,34 +77,94 @@ class ProcessAiTask implements ShouldQueue
 
                 $slidesData = $decoded['slides'] ?? (is_array($decoded) ? $decoded : []);
                 foreach ($slidesData as $s) {
+                    $bullets = $s['bullets'] ?? $s['bullet_points'] ?? [];
+                    if (is_string($bullets)) {
+                        $bullets = array_values(array_filter(array_map('trim', preg_split('/\r?\n/', $bullets))));
+                    }
+
                     $slides[] = [
                         'title'   => $s['title'] ?? '',
-                        'bullets' => $s['bullets'] ?? $s['bullet_points'] ?? [],
+                        'bullets' => is_array($bullets) ? array_values($bullets) : [],
                         'notes'   => $s['notes'] ?? $s['speaker_notes'] ?? null,
                     ];
                 }
-            } else {
-                if (is_string($piece) && $piece !== '') {
-                    $contents[] = trim($piece);
-                }
 
-                $payloadChunks[] = [
-                    'index'   => $index,
-                    'chunk'   => $chunk,
-                    'content' => $piece,
-                    'raw'     => $result['raw'] ?? [],
-                ];
+                $inputTokens  += (int) ($result['input_tokens']  ?? 0);
+                $outputTokens += (int) ($result['output_tokens'] ?? 0);
+                $costCents    += (int) ($result['cost_cents']    ?? 0);
             }
+
+            $this->task->update([
+                'status'        => 'done', // <— konsisten dengan UI (queued|running|done|failed)
+                'message'       => 'Generated via provider.',
+                'input_tokens'  => $inputTokens,
+                'output_tokens' => $outputTokens,
+                'cost_cents'    => $costCents,
+            ]);
+
+            AiTaskVersion::create([
+                'id'      => (string) Str::uuid(),
+                'task_id' => $this->task->id,
+                'locale'  => $this->locale,
+                'payload' => $slides,
+            ]);
+
+            UsageLog::create([
+                'tenant_id'  => $this->task->tenant_id,
+                'user_id'    => $this->task->user_id,
+                'task_id'    => $this->task->id,
+                'event'      => 'task.completed',
+                'cost_cents' => $costCents,
+                'tokens_in'  => $inputTokens,
+                'tokens_out' => $outputTokens,
+            ]);
+
+            $totalTokens = $inputTokens + $outputTokens;
+
+            if ($totalTokens > 0 && Schema::hasColumn('users', 'usage_tokens') && $project->user) {
+                $project->user->increment('usage_tokens', (int) $totalTokens);
+            }
+            if ($costCents > 0 && Schema::hasColumn('users', 'usage_cost_cents') && $project->user) {
+                $project->user->increment('usage_cost_cents', (int) $costCents);
+            }
+
+            if ($totalTokens > 0 && Schema::hasColumn('tenants', 'usage_tokens') && $project->tenant) {
+                $project->tenant->increment('usage_tokens', (int) $totalTokens);
+            }
+            if ($costCents > 0 && Schema::hasColumn('tenants', 'usage_cost_cents') && $project->tenant) {
+                $project->tenant->increment('usage_cost_cents', (int) $costCents);
+            }
+
+            return;
+        }
+
+        $payloadChunks = [];
+        $contents = [];
+
+        foreach ($chunks as $index => $chunk) {
+            $result = $provider->generate($project, $this->task->type, $this->locale, $chunk);
+
+            $piece = $result['content']
+                ?? $result['text']
+                ?? ($result['raw']['choices'][0]['message']['content'] ?? ($result['raw']['content'][0]['text'] ?? null));
+
+            if (is_string($piece) && $piece !== '') {
+                $contents[] = trim($piece);
+            }
+
+            $payloadChunks[] = [
+                'index'   => $index,
+                'chunk'   => $chunk,
+                'content' => $piece,
+                'raw'     => $result['raw'] ?? [],
+            ];
 
             $inputTokens  += (int) ($result['input_tokens']  ?? 0);
             $outputTokens += (int) ($result['output_tokens'] ?? 0);
             $costCents    += (int) ($result['cost_cents']    ?? 0);
         }
 
-        // Gabungkan content untuk preview UI (summary/mindmap). Slides bisa di-export saat download.
-        $combinedContent = $this->task->type === 'slides'
-            ? ''
-            : trim(implode("\n\n", array_filter($contents)));
+        $combinedContent = trim(implode("\n\n", array_filter($contents)));
 
         $this->task->update([
             'status'        => 'done', // <— konsisten dengan UI (queued|running|done|failed)
@@ -115,25 +174,15 @@ class ProcessAiTask implements ShouldQueue
             'cost_cents'    => $costCents,
         ]);
 
-        // Simpan payload khusus per tipe task
-        if ($this->task->type === 'slides') {
-            AiTaskVersion::create([
-                'id'      => (string) Str::uuid(),
-                'task_id' => $this->task->id,
-                'locale'  => $this->locale,
-                'payload' => $slides,
-            ]);
-        } else {
-            AiTaskVersion::create([
-                'id'      => (string) Str::uuid(),
-                'task_id' => $this->task->id,
-                'locale'  => $this->locale,
-                'payload' => [
-                    'content' => $combinedContent, // <— dipakai UI buat preview
-                    'chunks'  => $payloadChunks,
-                ],
-            ]);
-        }
+        AiTaskVersion::create([
+            'id'      => (string) Str::uuid(),
+            'task_id' => $this->task->id,
+            'locale'  => $this->locale,
+            'payload' => [
+                'content' => $combinedContent, // <— dipakai UI buat preview
+                'chunks'  => $payloadChunks,
+            ],
+        ]);
 
         UsageLog::create([
             'tenant_id'  => $this->task->tenant_id,
@@ -145,7 +194,6 @@ class ProcessAiTask implements ShouldQueue
             'tokens_out' => $outputTokens,
         ]);
 
-        // Akumulasi usage — amanin kalau kolom belum dimigrasi (biar job gak FAIL)
         $totalTokens = $inputTokens + $outputTokens;
 
         if ($totalTokens > 0 && Schema::hasColumn('users', 'usage_tokens') && $project->user) {
