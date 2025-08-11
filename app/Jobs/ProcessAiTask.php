@@ -89,15 +89,37 @@ class ProcessAiTask implements ShouldQueue
             'cost_cents'    => $costCents,
         ]);
 
-        AiTaskVersion::create([
-            'id'      => (string) Str::uuid(),
-            'task_id' => $this->task->id,
-            'locale'  => $this->locale,
-            'payload' => [
-                'content' => $combinedContent, // <— dipakai UI buat preview
-                'chunks'  => $payloadChunks,
-            ],
-        ]);
+        // Simpan payload khusus per tipe task
+        if ($this->task->type === 'slides') {
+            $slides = [];
+            try {
+                $decoded = json_decode($combinedContent, true, 512, JSON_THROW_ON_ERROR);
+                if (isset($decoded['slides']) && is_array($decoded['slides'])) {
+                    $slides = $decoded['slides'];
+                } elseif (is_array($decoded)) {
+                    $slides = $decoded;
+                }
+            } catch (Throwable $e) {
+                $slides = [];
+            }
+
+            AiTaskVersion::create([
+                'id'      => (string) Str::uuid(),
+                'task_id' => $this->task->id,
+                'locale'  => $this->locale,
+                'payload' => $slides,
+            ]);
+        } else {
+            AiTaskVersion::create([
+                'id'      => (string) Str::uuid(),
+                'task_id' => $this->task->id,
+                'locale'  => $this->locale,
+                'payload' => [
+                    'content' => $combinedContent, // <— dipakai UI buat preview
+                    'chunks'  => $payloadChunks,
+                ],
+            ]);
+        }
 
         UsageLog::create([
             'tenant_id'  => $this->task->tenant_id,
