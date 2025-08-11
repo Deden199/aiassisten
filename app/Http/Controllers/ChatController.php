@@ -47,7 +47,15 @@ class ChatController extends Controller
             'content' => $data['message'],
         ]);
 
-        $result = $provider->chat($fakeProject, $locale, $data['message']);
+        $messages = $session->messages()
+            ->orderByDesc('created_at')
+            ->take(20)
+            ->get(['role', 'content'])
+            ->reverse()
+            ->values()
+            ->toArray();
+
+        $result = $provider->chat($fakeProject, $locale, $messages);
         $content = \App\Services\AiProvider::extractContent($result) ?: 'Sorry, no response.';
 
         $session->messages()->create([
