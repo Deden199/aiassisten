@@ -11,9 +11,7 @@ use Spatie\PdfToText\Pdf;
 
 class DocumentParser
 {
-    public function __construct(private LoggerInterface $logger)
-    {
-    }
+    public function __construct(private LoggerInterface $logger) {}
 
     public function parse(string $disk, string $path): string
     {
@@ -60,9 +58,19 @@ class DocumentParser
 
             return Pdf::getText($fullPath);
         } catch (\Throwable $e) {
-            $parser = new PdfParser();
+            try {
+                $parser = new PdfParser;
 
-            return $parser->parseFile($fullPath)->getText();
+                return $parser->parseFile($fullPath)->getText();
+            } catch (\Throwable $fallbackException) {
+                $this->logger->error('PDF parsing failed using both parsers', [
+                    'path' => $fullPath,
+                    'spatie_error' => $e->getMessage(),
+                    'smalot_error' => $fallbackException->getMessage(),
+                ]);
+
+                return '';
+            }
         }
     }
 }
