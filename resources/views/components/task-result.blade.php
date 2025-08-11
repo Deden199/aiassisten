@@ -37,26 +37,26 @@
     }
 }" x-init="poll" class="space-y-2">
     <template x-if="status === 'done' && result.summary">
-        <pre class="whitespace-pre-wrap text-sm bg-gray-50 p-2 rounded" x-text="result.summary"></pre>
+        <pre class="whitespace-pre-wrap text-sm bg-gray-50 dark:bg-gray-800 dark:text-gray-200 p-2 rounded" x-text="result.summary"></pre>
     </template>
     <template x-if="status === 'done' && result.mindmap">
-        <ul class="list-disc ml-5 text-sm">
+        <ul class="list-disc ml-5 text-sm text-gray-700 dark:text-gray-300">
             <template x-for="(item, i) in result.mindmap" :key="i">
                 <li x-text="item"></li>
             </template>
         </ul>
     </template>
     <template x-if="status === 'done' && downloadUrl">
-        <a :href="downloadUrl" class="text-sm text-violet-600 underline">Download slides</a>
+        <a :href="downloadUrl" class="text-sm text-violet-600 dark:text-violet-400 underline">Download slides</a>
     </template>
     <template x-if="status && status !== 'done'">
         <div class="flex flex-col gap-1">
             <div class="flex items-center gap-2">
-                <svg x-show="['queued','running'].includes(status)" class="h-4 w-4 animate-spin text-gray-400" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" fill="none"/></svg>
-                <span class="text-sm" :class="status === 'failed' ? 'text-rose-600' : 'text-gray-500'" x-text="message || status"></span>
+                <svg x-show="['queued','running'].includes(status)" class="h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" fill="none"/></svg>
+                <span class="text-sm" :class="status === 'failed' ? 'text-rose-600 dark:text-rose-400' : 'text-gray-600 dark:text-gray-300'" x-text="status + (message ? ': ' + message : '')"></span>
             </div>
-            <div class="w-full h-2 bg-gray-100 rounded overflow-hidden" x-show="['queued','running'].includes(status)">
-                <div class="h-full w-1/2 bg-blue-400 animate-[indeterminate_1.2s_ease_infinite]"></div>
+            <div class="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded overflow-hidden" x-show="['queued','running'].includes(status)">
+                <div class="h-full w-1/2 bg-blue-400 dark:bg-blue-500 animate-[indeterminate_1.2s_ease_infinite]"></div>
             </div>
         </div>
     </template>
