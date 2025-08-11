@@ -47,7 +47,7 @@ class PptxExporterTest extends TestCase
             'input_tokens'  => 0,
             'output_tokens' => 0,
             'cost_cents'    => 0,
-            'status'        => 'succeeded',
+            'status'        => 'done',
             'message'       => '',
         ]);
 

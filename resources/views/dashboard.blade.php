@@ -172,7 +172,7 @@
                     </span>
                   </div>
 
-                  <div class="flex flex-wrap items-center gap-2">
+                  <div class="flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full">
                     <button
                       @click="run('{{ $p->id }}','summarize','{{ route('tasks.summarize', $p) }}','{{ e($p->title) }}')"
                       :disabled="isPending('{{ $p->id }}','summarize')"
