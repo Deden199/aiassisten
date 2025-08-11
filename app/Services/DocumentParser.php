@@ -2,12 +2,18 @@
 
 namespace App\Services;
 
+use App\Exceptions\DocumentParseException;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\IOFactory;
+use Psr\Log\LoggerInterface;
 use Spatie\PdfToText\Pdf;
 
 class DocumentParser
 {
+    public function __construct(private LoggerInterface $logger)
+    {
+    }
+
     public function parse(string $disk, string $path): string
     {
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
@@ -21,7 +27,12 @@ class DocumentParser
                 default => '',
             };
         } catch (\Throwable $e) {
-            return '';
+            $this->logger->error('Document parsing failed', [
+                'path' => $fullPath,
+                'message' => $e->getMessage(),
+            ]);
+
+            throw new DocumentParseException("Failed to parse document at {$path}", 0, $e);
         }
     }
 
