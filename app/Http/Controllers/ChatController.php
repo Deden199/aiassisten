@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AiProject;
 use App\Models\ChatSession;
 use App\Services\AiProvider;
 use Illuminate\Http\Request;
@@ -27,14 +28,15 @@ class ChatController extends Controller
             'locale'  => 'nullable|string|max:10',
         ]);
         $locale = $data['locale'] ?? app()->getLocale();
-        $fakeProject = (object)[
-            'id' => 'chat',
-            'title' => 'Chat',
-            'language' => $locale,
+
+        $fakeProject = new AiProject([
+            'id'        => 'chat',
+            'title'     => 'Chat',
+            'language'  => $locale,
             'tenant_id' => $request->user()->tenant_id,
-            'user' => $request->user(),
-            'tenant' => $request->user()->tenant,
-        ];
+        ]);
+        $fakeProject->setRelation('user', $request->user());
+        $fakeProject->setRelation('tenant', $request->user()->tenant);
 
         $session = ChatSession::firstOrCreate(
             ['user_id' => $request->user()->id],
