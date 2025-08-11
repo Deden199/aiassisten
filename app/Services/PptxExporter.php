@@ -10,27 +10,31 @@ use Illuminate\Support\Str;
 use PhpOffice\PhpPresentation\IOFactory;
 use PhpOffice\PhpPresentation\PhpPresentation;
 use PhpOffice\PhpPresentation\Slide\Background\Color as BgColor;
-use PhpOffice\PhpPresentation\Slide\Background\Gradient as BgGradient;
 use PhpOffice\PhpPresentation\Slide\Background\Image as BgImage;
+use PhpOffice\PhpPresentation\Style\Fill;
 use PhpOffice\PhpPresentation\Style\Alignment;
 use PhpOffice\PhpPresentation\Style\Bullet;
 use PhpOffice\PhpPresentation\Style\Color;
+use PhpOffice\PhpPresentation\Shape\Drawing;
+use PhpOffice\PhpPresentation\Shape\RichText;
 
 class PptxExporter
 {
+    private array $tempFiles = [];
+
     public function export(AiTaskVersion $version): void
     {
         $payload = $version->payload ?? [];
         $theme = $payload['theme'] ?? SlideTemplate::defaultTheme();
         $slides = $payload['slides'] ?? $payload;
         $presentation = new PhpPresentation();
-        $tempFiles = [];
+        $this->tempFiles = [];
 
         foreach ($slides as $index => $data) {
             $slide = $index === 0 ? $presentation->getActiveSlide() : $presentation->createSlide();
 
-            $bg = $data['background'] ?? $theme['background_default'] ?? [];
-            $this->applyBackground($slide, $bg, $tempFiles);
+            $bg = $data['background'] ?? null;
+            $this->applyBackground($slide, $bg, $theme);
 
             $titleLayout = $theme['layout']['title'] ?? ['x'=>30,'y'=>30,'w'=>900,'h'=>80,'align'=>'left'];
             $titleShape = $slide->createRichTextShape();
@@ -105,7 +109,7 @@ class PptxExporter
             }
         }
 
-        foreach ($tempFiles as $tmp) {
+        foreach ($this->tempFiles as $tmp) {
             @unlink($tmp);
         }
 
@@ -130,44 +134,72 @@ class PptxExporter
     private function hexToArgb(string $hex): string
     {
         $hex = ltrim($hex, '#');
+        if (!preg_match('/^[0-9a-fA-F]{6}$/', $hex)) {
+            $hex = '111827';
+        }
         return 'FF' . strtoupper($hex);
     }
 
-    private function applyBackground($slide, array $bg, array &$tempFiles): void
+    private function slideSize(PhpPresentation $presentation): array
     {
+        try {
+            $layout = $presentation->getLayout();
+            if (method_exists($layout, 'getCX') && method_exists($layout, 'getCY')) {
+                return [$layout->getCX(), $layout->getCY()];
+            }
+        } catch (\Throwable $e) {
+        }
+        return [960, 540];
+    }
+
+    private function createGradientLayer(\PhpOffice\PhpPresentation\Slide $slide, string $from, string $to): void
+    {
+        $presentation = $slide->getParent();
+        [$width, $height] = $this->slideSize($presentation);
+        $shape = new Drawing\Shape();
+        $shape->setWidth($width);
+        $shape->setHeight($height);
+        $shape->setOffsetX(0);
+        $shape->setOffsetY(0);
+        $shape->getFill()->setFillType(Fill::FILL_GRADIENT_LINEAR);
+        $shape->getFill()->setStartColor(new Color($this->hexToArgb($from)));
+        $shape->getFill()->setEndColor(new Color($this->hexToArgb($to)));
+        $slide->addShape($shape);
+    }
+
+    private function applyBackground($slide, ?array $bg = null, ?array $theme = null): void
+    {
+        $bg = $bg ?? [];
         $type = $bg['type'] ?? 'solid';
+
         if ($type === 'image' && !empty($bg['image_url'])) {
-            $path = $this->downloadImage($bg['image_url']);
-            if ($path) {
+            if ($path = $this->downloadToTmp($bg['image_url'])) {
                 $background = new BgImage();
                 $background->setPath($path);
                 $slide->setBackground($background);
-                $tempFiles[] = $path;
+                $this->tempFiles[] = $path;
                 return;
             }
             $type = 'solid';
         }
 
         if ($type === 'gradient' && isset($bg['gradient']['from'], $bg['gradient']['to'])) {
-            $background = new BgGradient();
-            $background->setStartColor(new Color($this->hexToArgb($bg['gradient']['from'])));
-            $background->setEndColor(new Color($this->hexToArgb($bg['gradient']['to'])));
-            $slide->setBackground($background);
+            $this->createGradientLayer($slide, $bg['gradient']['from'], $bg['gradient']['to']);
             return;
         }
 
-        $color = $bg['color'] ?? ($bg['background'] ?? '#FFFFFF');
+        $color = $bg['color'] ?? ($theme['background_default']['color'] ?? '#FFFFFF');
         $background = new BgColor();
         $background->setColor(new Color($this->hexToArgb($color)));
         $slide->setBackground($background);
     }
 
-    private function downloadImage(string $url): ?string
+    private function downloadToTmp(string $url): ?string
     {
         try {
             $response = Http::timeout(10)->get($url);
             if ($response->successful()) {
-                $path = storage_path('app/tmp/'.Str::uuid()->toString());
+                $path = storage_path('app/tmp/' . Str::uuid()->toString());
                 if (!is_dir(dirname($path))) {
                     mkdir(dirname($path), 0777, true);
                 }
