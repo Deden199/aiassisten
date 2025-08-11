@@ -49,6 +49,10 @@ We would like to extend our thanks to the following sponsors for funding Laravel
 - **[byte5](https://byte5.de)**
 - **[OP.GG](https://op.gg)**
 
+## Task Results
+
+Task outputs are stored as versions. Each version may be previewed at `/versions/{version}/preview`, which returns HTML or JSON suitable for display.
+
 ## Contributing
 
 Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
