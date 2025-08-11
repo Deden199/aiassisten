@@ -69,5 +69,7 @@ class DatabaseSeeder extends Seeder
                 'cancel_at_period_end'  => false,
             ]
         );
+
+        $this->call(SlideTemplateSeeder::class);
     }
 }

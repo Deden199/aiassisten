@@ -37,7 +37,13 @@
               <option value="es">Spanish</option>
               <option value="fr">French</option>
             </select>
-            <div class="text-xs text-gray-500 self-center">PDF/DOCX/PPTX/TXT up to 10MB. Private storage.</div>
+            <select name="slide_template_id" class="block w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400">
+              <option value="">Default template</option>
+              @foreach($templates as $tpl)
+                <option value="{{ $tpl->id }}">{{ $tpl->name }}</option>
+              @endforeach
+            </select>
+            <div class="text-xs text-gray-500 sm:col-span-2">PDF/DOCX/PPTX/TXT up to 10MB. Private storage.</div>
           </div>
 
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 mt-2">

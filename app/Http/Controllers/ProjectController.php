@@ -26,7 +26,9 @@ class ProjectController extends Controller
             ->latest()
             ->paginate(8);
 
-        return view('dashboard', compact('projects'));
+        $templates = \App\Models\SlideTemplate::select('id','name')->where('tenant_id', $request->user()->tenant_id)->get();
+
+        return view('dashboard', compact('projects','templates'));
     }
 
     public function store(Request $r, DocumentParser $parser)
@@ -35,6 +37,7 @@ class ProjectController extends Controller
             'title' => ['required', 'string', 'max:160'],
             'file' => ['nullable', 'file', 'mimes:pdf,txt,doc,docx,ppt,pptx', 'max:10240'], // 10MB
             'language' => ['nullable', 'string', 'max:10'],
+            'slide_template_id' => ['nullable','uuid','exists:slide_templates,id'],
         ]);
 
         $path = null;
@@ -63,6 +66,7 @@ class ProjectController extends Controller
             'language' => $r->input('language', $r->user()->locale ?? 'en'),
             'source_text' => $text,
             'status' => 'ready',
+            'slide_template_id' => $r->input('slide_template_id'),
         ]);
 
         return back()->with('ok', 'Project created.');
