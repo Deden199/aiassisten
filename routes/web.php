@@ -8,6 +8,7 @@ use App\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Models\AiTask; // ⬅️ perlu buat fallback flat
 
 // Landing page
 Route::get('/', fn () => view('welcome'))->name('landing');
@@ -31,7 +32,21 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/projects/{project}/tasks/slides', [TaskController::class, 'slides'])->name('tasks.slides');
     });
 
-    Route::get('/projects/{project}/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
+    // ✅ Polling status (spesifik, pakai scoped binding + UUID)
+    Route::get('/projects/{project}/tasks/{task}', [TaskController::class, 'show'])
+        ->scopeBindings()
+        ->whereUuid(['project','task'])
+        ->name('tasks.show');
+
+    // ✅ Fallback flat: /tasks/{task} → redirect ke nested yang benar
+    Route::get('/tasks/{task}', function (AiTask $task) {
+        return redirect()->route('tasks.show', [$task->project_id, $task->id]);
+    })->whereUuid('task')->name('tasks.show.flat');
+
+    // (opsional) Friendly GET fallback untuk action manual
+    Route::get('/projects/{project}/tasks/{type}', fn () => redirect()->route('dashboard'))
+        ->whereIn('type', ['summarize','mindmap','slides'])
+        ->name('tasks.fallback');
 
     // Versions
     Route::get('/versions/{version}/download', [TaskController::class, 'download'])->name('versions.download');

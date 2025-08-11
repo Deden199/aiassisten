@@ -30,13 +30,23 @@ class TaskController extends Controller
 
         ProcessAiTask::dispatch($task, $locale);
 
+        // ⬇️ KUNCI: kalau AJAX / minta JSON, balikin JSON (jangan redirect)
+        if ($r->expectsJson() || $r->ajax()) {
+            return response()->json([
+                'ok'       => true,
+                'task_id'  => $task->id,
+                'status'   => $task->status,
+                'message'  => $task->message,
+                'poll_url' => route('tasks.show', [$project, $task]),
+            ], 201);
+        }
+
         return back()->with('ok', ucfirst($type).' queued.');
     }
 
-    public function show(Request $r, AiTask $task)
+    // Polling status
+    public function show(Request $r, AiProject $project, AiTask $task)
     {
-        $project = $r->route('project');
-
         abort_unless(
             $project &&
             $project->tenant_id === $r->user()->tenant_id &&
@@ -45,14 +55,30 @@ class TaskController extends Controller
             403
         );
 
-        return [
-            'status'   => $task->status,
-            'message'  => $task->message,
-            'versions' => $task->versions()->latest()->get()->makeVisible('payload'),
-        ];
+        $versions = $task->versions()->latest()->get();
+        $downloadUrl = null;
+
+        // kalau slides & sudah ada file, kirim link unduh
+        if ($task->type === 'slides') {
+            $v = $versions->first();
+            if ($v && $v->file_path) {
+                $downloadUrl = route('versions.download', $v);
+            }
+        }
+
+        return response()->json([
+            'status'       => $task->status,
+            'message'      => $task->message,
+            'versions'     => $versions->makeVisible('payload'),
+            'download_url' => $downloadUrl,
+        ]);
     }
 
-    public function summarize(Request $r, AiProject $project) { return $this->makeTask($r, $project, 'summarize', $r->input('locale','en')); }
+    public function summarize(Request $r, AiProject $project)
+    {
+        return $this->makeTask($r, $project, 'summarize', $r->input('locale','en'));
+    }
+
     public function mindmap(Request $r, AiProject $project)
     {
         abort_unless($project->tenant_id === $r->user()->tenant_id && $project->user_id === $r->user()->id, 403);
@@ -63,7 +89,11 @@ class TaskController extends Controller
 
         return $this->makeTask($r, $project, 'mindmap', $r->input('locale', 'en'));
     }
-    public function slides(Request $r, AiProject $project)    { return $this->makeTask($r, $project, 'slides',    $r->input('locale','en')); }
+
+    public function slides(Request $r, AiProject $project)
+    {
+        return $this->makeTask($r, $project, 'slides', $r->input('locale','en'));
+    }
 
     public function download(Request $r, AiTaskVersion $version, PptxExporter $exporter)
     {

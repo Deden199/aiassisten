@@ -3,13 +3,13 @@
 @section('title', 'Dashboard — AI Assistant')
 
 @section('header')
-  <div x-data="{ openNew:false }" class="flex items-center justify-between">
+  <div x-data="{ openNew:false }" class="flex flex-col md:flex-row md:items-center justify-between gap-3">
     <div>
       <h2 class="font-semibold text-xl text-gray-800">Welcome back 👋</h2>
       <p class="text-sm text-gray-500">Create projects, generate summaries, mindmaps, and slides.</p>
     </div>
     <button @click="openNew=true"
-      class="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-rose-600 text-white font-semibold shadow hover:opacity-95 transition">
+      class="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-rose-600 text-white font-semibold shadow hover:opacity-95 transition whitespace-nowrap">
       + New Project
     </button>
 
@@ -29,7 +29,7 @@
                  class="block w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400" required autofocus>
           <input type="file" name="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt"
                  class="block w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400">
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <select name="language" class="block w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400">
               <option value="en">English</option>
               <option value="id">Indonesian</option>
@@ -40,9 +40,9 @@
             <div class="text-xs text-gray-500 self-center">PDF/DOCX/PPTX/TXT up to 10MB. Private storage.</div>
           </div>
 
-          <div class="flex items-center justify-end gap-2 mt-2">
-            <button type="button" @click="openNew=false" class="px-4 py-2 rounded-xl border">Cancel</button>
-            <button class="px-4 py-2 rounded-xl bg-gray-900 text-white font-semibold hover:bg-black transition">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 mt-2">
+            <button type="button" @click="openNew=false" class="px-4 py-2 rounded-xl border w-full sm:w-auto">Cancel</button>
+            <button class="px-4 py-2 rounded-xl bg-gray-900 text-white font-semibold hover:bg-black transition w-full sm:w-auto">
               Create project
             </button>
           </div>
@@ -53,7 +53,7 @@
 @endsection
 
 @section('content')
-  <div class="max-w-7xl mx-auto px-6 lg:px-8 py-8 space-y-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
     {{-- Alerts --}}
     @if (session('ok'))
@@ -77,7 +77,6 @@
       <div class="rounded-2xl bg-gradient-to-br from-fuchsia-50 to-white border p-6 shadow-sm">
         <div class="text-sm text-gray-600">Tasks this month</div>
         <div class="mt-1 text-3xl font-extrabold text-fuchsia-700">
-          {{-- placeholder; wire up later --}}
           {{ \App\Models\AiTask::where('tenant_id', auth()->user()->tenant_id ?? null)->where('user_id', auth()->id())->whereMonth('created_at', now()->month)->count() }}
         </div>
         <div class="mt-1 text-xs text-gray-500">Queued / Completed</div>
@@ -91,97 +90,275 @@
       </div>
     </div>
 
-    {{-- Projects --}}
-    <div x-data="taskRunner" class="rounded-2xl border bg-white p-6 shadow-sm">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold">Your projects</h3>
-        <div class="text-sm text-gray-500">{{ $projects->total() }} total</div>
-      </div>
+    {{-- ===== Satu Alpine instance (stabil & responsif) ===== --}}
+    <div x-data="taskRunner">
 
-      @if ($projects->count() === 0)
-        <div class="text-center py-14">
-          <div class="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-100 to-fuchsia-100 flex items-center justify-center text-2xl">📄</div>
-          <h4 class="mt-4 text-lg font-semibold">No projects yet</h4>
-          <p class="mt-1 text-gray-600">Click <span class="font-medium">New Project</span> to get started.</p>
+      {{-- Active tasks list (global) --}}
+      <div class="rounded-2xl border bg-white p-6 shadow-sm mb-6">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" fill="none"/></svg>
+            <h3 class="text-sm font-semibold">Active tasks</h3>
+          </div>
+          <span class="text-xs text-gray-500" x-text="visibleList().length + ' running/recent'"></span>
         </div>
-      @else
-        <div class="grid gap-4">
-            @foreach ($projects as $p)
-            @php
-              $statusColor = match($p->status) {
-                'queued' => 'bg-amber-100 text-amber-800',
-                'running' => 'bg-blue-100 text-blue-800',
-                'ready' => 'bg-emerald-100 text-emerald-800',
-                'failed' => 'bg-rose-100 text-rose-800',
-                default => 'bg-gray-100 text-gray-800'
-              };
-              $summaryTask = $p->tasks->where('type','summarize')->sortByDesc('created_at')->first();
-              $mindmapTask = $p->tasks->where('type','mindmap')->sortByDesc('created_at')->first();
-              $slidesTask = $p->tasks->where('type','slides')->sortByDesc('created_at')->first();
-              $slidesVersion = $slidesTask?->versions->sortByDesc('created_at')->first();
-            @endphp
-            <div class="rounded-xl border p-4 hover:bg-gray-50 transition flex flex-col">
-              <div class="flex flex-col md:flex-row md:items-center justify-between">
-              <div class="space-y-1">
-                <div class="font-medium text-gray-900">{{ $p->title }}</div>
-                <div class="text-sm text-gray-500">
-                  {{ $p->source_filename ?? 'No file' }} · Lang: {{ strtoupper($p->language) }}
-                </div>
-                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs {{ $statusColor }}">
-                  • {{ ucfirst($p->status) }}
-                </span>
-              </div>
 
-              <div class="flex items-center gap-2 mt-3 md:mt-0">
-                <button @click="run('{{ $p->id }}','summarize','{{ route('tasks.summarize', $p) }}')"
-                  class="px-3 py-2 rounded-lg border hover:bg-violet-50 flex items-center gap-2">
-                  <svg x-cloak x-show="isPending('{{ $p->id }}','summarize')" class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
-                  </svg>
-                  <span x-show="!isPending('{{ $p->id }}','summarize')">Summary</span>
-                </button>
-                <button @click="run('{{ $p->id }}','mindmap','{{ route('tasks.mindmap', $p) }}')"
-                  class="px-3 py-2 rounded-lg border hover:bg-fuchsia-50 flex items-center gap-2">
-                  <svg x-cloak x-show="isPending('{{ $p->id }}','mindmap')" class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
-                  </svg>
-                  <span x-show="!isPending('{{ $p->id }}','mindmap')">Mindmap</span>
-                </button>
-                <button @click="run('{{ $p->id }}','slides','{{ route('tasks.slides', $p) }}')"
-                  class="px-3 py-2 rounded-lg border hover:bg-rose-50 flex items-center gap-2">
-                  <svg x-cloak x-show="isPending('{{ $p->id }}','slides')" class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
-                  </svg>
-                  <span x-show="!isPending('{{ $p->id }}','slides')">Slides</span>
-                </button>
-                @if($slidesVersion && $slidesVersion->file_path)
-                  <a href="{{ route('versions.download', $slidesVersion) }}" class="px-3 py-2 rounded-lg border hover:bg-emerald-50">Download PPTX</a>
-                @endif
-                <form action="{{ route('projects.destroy', $p) }}" method="POST" onsubmit="return confirm('Delete project?')">
-                  @csrf @method('DELETE')
-                  <button class="px-3 py-2 rounded-lg border text-rose-600 hover:bg-rose-50">Delete</button>
-                </form>
+        <template x-if="visibleList().length === 0">
+          <p class="mt-3 text-sm text-gray-500">No active tasks.</p>
+        </template>
+
+        <div class="mt-4 space-y-4" x-show="visibleList().length > 0">
+          <template x-for="it in visibleList()" :key="it.key">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="text-sm">
+                  <span class="font-medium" x-text="it.title || 'Project'"></span>
+                  <span class="text-gray-500">—</span>
+                  <span class="uppercase text-gray-700" x-text="it.type"></span>
+                </div>
+                <span class="px-2 py-0.5 text-xs rounded-full" :class="badgeClass(it.status)" x-text="it.status"></span>
               </div>
-              </div>
-              <div class="mt-4 space-y-2">
-                @if($summaryTask)
-                  <x-task-result :project="$p" :task="$summaryTask" />
-                @endif
-                @if($mindmapTask)
-                  <x-task-result :project="$p" :task="$mindmapTask" />
-                @endif
-                @if($slidesTask)
-                  <x-task-result :project="$p" :task="$slidesTask" />
-                @endif
+              <div class="w-full h-2 bg-gray-100 rounded overflow-hidden">
+                <div class="h-full w-1/2 bg-blue-400 animate-[indeterminate_1.2s_ease_infinite]"></div>
               </div>
             </div>
-          @endforeach
+          </template>
         </div>
-        <div class="mt-4">{{ $projects->links() }}</div>
-      @endif
+      </div>
+
+      <style>
+      @keyframes indeterminate{0%{transform:translateX(-100%)}50%{transform:translateX(0%)}100%{transform:translateX(100%)}}
+      </style>
+
+      {{-- Projects --}}
+      <div class="rounded-2xl border bg-white p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold">Your projects</h3>
+          <div class="text-sm text-gray-500">{{ $projects->total() }} total</div>
+        </div>
+
+        @if ($projects->count() === 0)
+          <div class="text-center py-14">
+            <div class="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-100 to-fuchsia-100 flex items-center justify-center text-2xl">📄</div>
+            <h4 class="mt-4 text-lg font-semibold">No projects yet</h4>
+            <p class="mt-1 text-gray-600">Click <span class="font-medium">New Project</span> to get started.</p>
+          </div>
+        @else
+          <div class="grid gap-4">
+            @foreach ($projects as $p)
+              @php
+                $statusColor = match($p->status) {
+                  'queued' => 'bg-amber-100 text-amber-800',
+                  'running' => 'bg-blue-100 text-blue-800',
+                  'ready' => 'bg-emerald-100 text-emerald-800',
+                  'failed' => 'bg-rose-100 text-rose-800',
+                  default => 'bg-gray-100 text-gray-800'
+                };
+                $summaryTask = $p->tasks->where('type','summarize')->sortByDesc('created_at')->first();
+                $mindmapTask = $p->tasks->where('type','mindmap')->sortByDesc('created_at')->first();
+                $slidesTask = $p->tasks->where('type','slides')->sortByDesc('created_at')->first();
+                $slidesVersion = $slidesTask?->versions->sortByDesc('created_at')->first();
+              @endphp
+
+              <div class="rounded-xl border p-4 hover:bg-gray-50 transition flex flex-col">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div class="space-y-1 min-w-0">
+                    <div class="font-medium text-gray-900 truncate">{{ $p->title }}</div>
+                    <div class="text-sm text-gray-500 truncate">
+                      {{ $p->source_filename ?? 'No file' }} · Lang: {{ strtoupper($p->language) }}
+                    </div>
+                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs {{ $statusColor }}">
+                      • {{ ucfirst($p->status) }}
+                    </span>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-2">
+                    <button
+                      @click="run('{{ $p->id }}','summarize','{{ route('tasks.summarize', $p) }}','{{ e($p->title) }}')"
+                      :disabled="isPending('{{ $p->id }}','summarize')"
+                      class="px-3 py-2 rounded-lg border hover:bg-violet-50 flex items-center gap-2 disabled:opacity-50 w-full sm:w-auto">
+                      <svg x-show="isPending('{{ $p->id }}','summarize')" class="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      </svg>
+                      <span x-text="isPending('{{ $p->id }}','summarize') ? 'Queuing…' : 'Summary'"></span>
+                    </button>
+
+                    <button
+                      @click="run('{{ $p->id }}','mindmap','{{ route('tasks.mindmap', $p) }}','{{ e($p->title) }}')"
+                      :disabled="isPending('{{ $p->id }}','mindmap')"
+                      class="px-3 py-2 rounded-lg border hover:bg-fuchsia-50 flex items-center gap-2 disabled:opacity-50 w-full sm:w-auto">
+                      <svg x-show="isPending('{{ $p->id }}','mindmap')" class="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      </svg>
+                      <span x-text="isPending('{{ $p->id }}','mindmap') ? 'Queuing…' : 'Mindmap'"></span>
+                    </button>
+
+                    <button
+                      @click="run('{{ $p->id }}','slides','{{ route('tasks.slides', $p) }}','{{ e($p->title) }}')"
+                      :disabled="isPending('{{ $p->id }}','slides')"
+                      class="px-3 py-2 rounded-lg border hover:bg-rose-50 flex items-center gap-2 disabled:opacity-50 w-full sm:w-auto">
+                      <svg x-show="isPending('{{ $p->id }}','slides')" class="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      </svg>
+                      <span x-text="isPending('{{ $p->id }}','slides') ? 'Queuing…' : 'Slides'"></span>
+                    </button>
+
+                    @if($slidesVersion && $slidesVersion->file_path)
+                      <a href="{{ route('versions.download', $slidesVersion) }}" class="px-3 py-2 rounded-lg border hover:bg-emerald-50 w-full sm:w-auto text-center">Download PPTX</a>
+                    @endif
+
+                    <form action="{{ route('projects.destroy', $p) }}" method="POST" onsubmit="return confirm('Delete project?')" class="w-full sm:w-auto">
+                      @csrf @method('DELETE')
+                      <button class="px-3 py-2 rounded-lg border text-rose-600 hover:bg-rose-50 w-full sm:w-auto">Delete</button>
+                    </form>
+                  </div>
+                </div>
+
+                <div class="mt-4 space-y-2">
+                  @if($summaryTask) <x-task-result :project="$p" :task="$summaryTask" /> @endif
+                  @if($mindmapTask) <x-task-result :project="$p" :task="$mindmapTask" /> @endif
+                  @if($slidesTask)  <x-task-result :project="$p" :task="$slidesTask" />  @endif
+                </div>
+
+                {{-- Inline progress untuk project ini --}}
+                <div class="mt-3 space-y-2"
+                     x-show="isPending('{{ $p->id }}','summarize') || isPending('{{ $p->id }}','mindmap') || isPending('{{ $p->id }}','slides')">
+                  <div class="flex items-center gap-2 text-xs">
+                    <span class="font-medium">Processing…</span>
+                    <span class="px-2 py-0.5 rounded-full"
+                          :class="badgeClass(status('{{ $p->id }}'))"
+                          x-text="status('{{ $p->id }}') || 'running'"></span>
+                  </div>
+                  <div class="w-full h-2 bg-gray-100 rounded overflow-hidden">
+                    <div class="h-full w-1/2 bg-blue-400 animate-[indeterminate_1.2s_ease_infinite]"></div>
+                  </div>
+                </div>
+              </div>
+            @endforeach
+          </div>
+          <div class="mt-4">{{ $projects->links() }}</div>
+        @endif
+      </div>
+
+      {{-- Toast --}}
+      <div x-show="toast.show" x-transition.opacity class="fixed bottom-4 right-4 z-50">
+        <div class="px-4 py-3 rounded-xl shadow-lg text-white"
+             :class="toast.type==='error' ? 'bg-rose-600' : (toast.type==='success' ? 'bg-emerald-600' : 'bg-gray-900')"
+             x-text="toast.msg"></div>
+      </div>
+
     </div>
   </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.data('taskRunner', () => ({
+    items: {}, timers: {},
+    holdOnDoneMs: 2500,            // tampilkan task yang baru selesai beberapa detik
+    autoReloadOnDone: true,        // reload setelah hold agar hasil kebaru
+    toast: { show:false, msg:'', type:'info' },
+    debug: false,
+
+    run(projectId, type, action, projectTitle = null) {
+      if (!action || typeof action !== 'string') {
+        this.notice('Action URL missing', 'error'); return;
+      }
+      const key = `${projectId}:${type}`;
+      const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+      const init = { key, projectId, type, title: projectTitle, status:'queued', message:null, pollUrl:null, finishedAt:null };
+      this.items = { ...this.items, [key]: init };
+
+      fetch(action, {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': token || '',
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(async (res) => { if (!res.ok) throw new Error(await res.text() || 'Request failed'); return res.json(); })
+      .then((j) => {
+        const st = j.status || 'queued';
+        const pollUrl = j.poll_url || (j.task_id ? `${window.location.origin}/projects/${projectId}/tasks/${j.task_id}` : null);
+        if (!pollUrl) throw new Error('Poll URL missing');
+        this.items = { ...this.items, [key]: { ...this.items[key], status:(st==='succeeded')?'done':st, pollUrl } };
+        this.notice('Queued: ' + type.toUpperCase());
+        this.poll(key);
+        this.timers[key] = setInterval(() => this.poll(key), 1200);
+      })
+      .catch((e) => {
+        this.items = { ...this.items, [key]: { ...this.items[key], status:'failed', message:e.message, finishedAt: Date.now() } };
+        this.notice(e.message, 'error');
+      });
+    },
+
+    async poll(key) {
+      const it = this.items[key]; if (!it?.pollUrl) return;
+      try {
+        const r = await fetch(it.pollUrl, { headers: { 'Accept':'application/json' }});
+        if (!r.ok) throw new Error('Polling error');
+        const j = await r.json();
+
+        const st = j.status || it.status;
+        const upd = { ...it, status:(st==='succeeded')?'done':st, message:j.message || it.message };
+        this.items = { ...this.items, [key]: upd };
+
+        if (upd.status === 'done' || upd.status === 'failed') {
+          this.stop(key);
+          this.items = { ...this.items, [key]: { ...this.items[key], finishedAt: Date.now() } };
+          this.notice(upd.status === 'done' ? 'Completed' : (upd.message || 'Failed'), upd.status === 'done' ? 'success' : 'error');
+
+          setTimeout(() => {
+            // hapus dari list setelah hold
+            const current = this.items[key];
+            if (current && current.finishedAt) {
+              const { [key]: _, ...rest } = this.items;
+              this.items = rest;
+              if (this.autoReloadOnDone) window.location.reload();
+            }
+          }, this.holdOnDoneMs);
+        }
+      } catch (e) {
+        this.items = { ...this.items, [key]: { ...it, status:'failed', message:e.message, finishedAt: Date.now() } };
+        this.stop(key);
+        this.notice(e.message, 'error');
+      }
+    },
+
+    stop(key){ if (this.timers[key]) { clearInterval(this.timers[key]); delete this.timers[key]; } },
+
+    isPending(projectId, type){ const k = `${projectId}:${type}`; return ['queued','running'].includes(this.items[k]?.status); },
+
+    status(projectId){
+      const i = Object.values(this.items).find(i => i.projectId===projectId && ['queued','running'].includes(i.status));
+      return i?.status || null;
+    },
+
+    // tampilkan task aktif + yang baru selesai (selama hold)
+    visibleList(){
+      const now = Date.now();
+      return Object.values(this.items).filter(i => {
+        if (['queued','running'].includes(i.status)) return true;
+        if (['done','failed'].includes(i.status) && i.finishedAt && now - i.finishedAt < this.holdOnDoneMs) return true;
+        return false;
+      });
+    },
+
+    badgeClass(st){
+      return {
+        'bg-yellow-100 text-yellow-800': st === 'queued',
+        'bg-blue-100 text-blue-800': st === 'running',
+        'bg-green-100 text-green-800': st === 'done',
+        'bg-red-100 text-red-800': st === 'failed',
+        'bg-gray-100 text-gray-800': !st
+      };
+    },
+
+    notice(msg, type='info'){ this.toast = { show:true, msg, type }; setTimeout(() => this.toast.show = false, 1400); }
+  }));
+});
+</script>
+@endpush
