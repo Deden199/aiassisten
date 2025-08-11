@@ -13,6 +13,7 @@
         "paypal/paypal-checkout-sdk": "^1.0",
         "phpoffice/phppresentation": "^1.2",
         "phpoffice/phpword": "^1.4",
+        "smalot/pdfparser": "^2.12",
         "spatie/pdf-to-text": "^1.54",
         "stripe/stripe-php": "^14.0",
         "yethee/tiktoken": "^0.11.0"
