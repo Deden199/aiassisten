@@ -24,52 +24,54 @@ class PptxExporter
 
     public function export(AiTaskVersion $version): void
     {
-        $payload = $this->parsePayload($version->payload ?? []);
-        $theme   = $payload['theme'] ?? SlideTemplate::defaultTheme();
-        $slides  = $payload['slides'] ?? [];
+        try {
+            $payload = $this->parsePayload($version->payload ?? []);
+            $theme   = $payload['theme'] ?? SlideTemplate::defaultTheme();
+            $slides  = $payload['slides'] ?? [];
 
-        $presentation = new PhpPresentation();
-        $this->tempFiles = [];
+            $presentation = new PhpPresentation();
+            $this->tempFiles = [];
 
-        $palette = $theme['palette'] ?? [
-            'background' => '#0B1220',
-            'primary'    => '#60A5FA',
-            'secondary'  => '#A78BFA',
-            'accent'     => '#34D399',
-        ];
-        $accentCycle = [$palette['primary'], $palette['secondary'], $palette['accent']];
+            $palette = $theme['palette'] ?? [
+                'background' => '#0B1220',
+                'primary'    => '#60A5FA',
+                'secondary'  => '#A78BFA',
+                'accent'     => '#34D399',
+            ];
+            $accentCycle = [$palette['primary'], $palette['secondary'], $palette['accent']];
 
-        foreach ($slides as $i => $s) {
-            $slide = $i === 0 ? $presentation->getActiveSlide() : $presentation->createSlide();
-            $this->applyBackground($slide, $s['background'] ?? null, $theme);
+            foreach ($slides as $i => $s) {
+                $slide = $i === 0 ? $presentation->getActiveSlide() : $presentation->createSlide();
+                $this->applyBackground($slide, $s['background'] ?? null, $theme);
 
-            $titleColor  = $s['colors']['title']   ?? $palette['primary'];
-            $bulletsCol  = $s['colors']['bullets'] ?? $palette['secondary'];
-            $accentColor = $s['colors']['accent']  ?? $accentCycle[$i % count($accentCycle)];
+                $titleColor  = $s['colors']['title']   ?? $palette['primary'];
+                $bulletsCol  = $s['colors']['bullets'] ?? $palette['secondary'];
+                $accentColor = $s['colors']['accent']  ?? $accentCycle[$i % count($accentCycle)];
 
-            $layout = strtolower($s['layout'] ?? 'title-bullets');
-            match ($layout) {
-                'cover'         => $this->renderCover($slide, $s, $theme, $titleColor, $accentColor),
-                'image-right'   => $this->renderImageText($slide, $s, $theme, $titleColor, $bulletsCol, 'right'),
-                'image-left'    => $this->renderImageText($slide, $s, $theme, $titleColor, $bulletsCol, 'left'),
-                'two-column'    => $this->renderTwoColumn($slide, $s, $theme, $titleColor, $bulletsCol),
-                'quote'         => $this->renderQuote($slide, $s, $theme, $titleColor, $accentColor),
-                'stat'          => $this->renderStat($slide, $s, $theme, $titleColor, $accentColor),
-                'section-break' => $this->renderSectionBreak($slide, $s, $theme, $titleColor, $accentColor),
-                default         => $this->renderTitleBullets($slide, $s, $theme, $titleColor, $bulletsCol),
-            };
+                $layout = strtolower($s['layout'] ?? 'title-bullets');
+                match ($layout) {
+                    'cover'         => $this->renderCover($slide, $s, $theme, $titleColor, $accentColor),
+                    'image-right'   => $this->renderImageText($slide, $s, $theme, $titleColor, $bulletsCol, 'right'),
+                    'image-left'    => $this->renderImageText($slide, $s, $theme, $titleColor, $bulletsCol, 'left'),
+                    'two-column'    => $this->renderTwoColumn($slide, $s, $theme, $titleColor, $bulletsCol),
+                    'quote'         => $this->renderQuote($slide, $s, $theme, $titleColor, $accentColor),
+                    'stat'          => $this->renderStat($slide, $s, $theme, $titleColor, $accentColor),
+                    'section-break' => $this->renderSectionBreak($slide, $s, $theme, $titleColor, $accentColor),
+                    default         => $this->renderTitleBullets($slide, $s, $theme, $titleColor, $bulletsCol),
+                };
+            }
+
+            $disk = 'private';
+            $path = 'slides/' . Str::uuid() . '.pptx';
+            Storage::disk($disk)->makeDirectory('slides');
+
+            $writer = IOFactory::createWriter($presentation, 'PowerPoint2007');
+            $writer->save(Storage::disk($disk)->path($path));
+
+            $version->update(['file_disk' => $disk, 'file_path' => $path]);
+        } finally {
+            foreach ($this->tempFiles as $tmp) @unlink($tmp);
         }
-
-        foreach ($this->tempFiles as $tmp) @unlink($tmp);
-
-        $disk = 'private';
-        $path = 'slides/' . Str::uuid() . '.pptx';
-        Storage::disk($disk)->makeDirectory('slides');
-
-        $writer = IOFactory::createWriter($presentation, 'PowerPoint2007');
-        $writer->save(Storage::disk($disk)->path($path));
-
-        $version->update(['file_disk' => $disk, 'file_path' => $path]);
     }
 
     private function parsePayload($raw): array
@@ -186,6 +188,8 @@ class PptxExporter
     /* Shape primitives */
     private function titleShape($slide, string $title, array $layout, array $theme, string $color, int $sizeOverride = null): void
     {
+        $title = trim(strip_tags($title));
+
         $rt = $slide->createRichTextShape();
         $rt->setWidth($layout['w'])->setHeight($layout['h'])->setOffsetX($layout['x'])->setOffsetY($layout['y']);
         $ha = match($layout['align'] ?? 'left') {
@@ -273,15 +277,22 @@ class PptxExporter
 
     private function downloadToTmp(string $url): ?string
     {
+        $path = storage_path('app/tmp/' . Str::uuid()->toString());
+        $success = false;
         try {
             $res = Http::timeout(10)->get($url);
             if ($res->successful()) {
-                $path = storage_path('app/tmp/' . Str::uuid()->toString());
                 if (!is_dir(dirname($path))) mkdir(dirname($path), 0777, true);
                 file_put_contents($path, $res->body());
+                $success = true;
                 return $path;
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        } finally {
+            if (!$success) {
+                @unlink($path);
+            }
+        }
         return null;
     }
 }
