@@ -157,7 +157,6 @@
                 $summaryTask = $p->tasks->where('type','summarize')->sortByDesc('created_at')->first();
                 $mindmapTask = $p->tasks->where('type','mindmap')->sortByDesc('created_at')->first();
                 $slidesTask = $p->tasks->where('type','slides')->sortByDesc('created_at')->first();
-                $slidesVersion = $slidesTask?->versions->sortByDesc('created_at')->first();
               @endphp
 
               <div class="rounded-xl border p-4 hover:bg-gray-50 transition flex flex-col">
@@ -204,8 +203,21 @@
                       <span x-text="isPending('{{ $p->id }}','slides') ? 'Queuing…' : 'Slides'"></span>
                     </button>
 
-                    @if($slidesVersion && $slidesVersion->file_path)
-                      <a href="{{ route('versions.download', $slidesVersion) }}" class="w-full sm:w-auto px-3 py-2 rounded-lg border hover:bg-emerald-50 text-center">Download PPTX</a>
+                    @if($slidesTask && $slidesTask->versions->count())
+                      <div x-data="{ open:false }" class="relative w-full sm:w-auto">
+                        <button @click="open=!open" class="w-full sm:w-auto px-3 py-2 rounded-lg border hover:bg-emerald-50 flex items-center justify-center gap-1">
+                          Versions
+                          <svg class="h-4 w-4" :class="open ? 'rotate-180' : ''" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.939l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+                        </button>
+                        <div x-show="open" @click.outside="open=false" x-transition class="absolute z-10 mt-1 w-56 bg-white border rounded-lg shadow-lg p-2 space-y-2">
+                          @foreach($slidesTask->versions->sortByDesc('created_at') as $version)
+                            <div class="flex gap-2">
+                              <a href="{{ route('versions.preview', $version) }}" @click.prevent="showPreview($event.currentTarget.href)" class="flex-1 px-3 py-2 rounded-lg border hover:bg-gray-50 text-center">Preview</a>
+                              <a href="{{ route('versions.download', $version) }}" class="flex-1 px-3 py-2 rounded-lg border hover:bg-emerald-50 text-center">Download</a>
+                            </div>
+                          @endforeach
+                        </div>
+                      </div>
                     @endif
 
                     <form action="{{ route('projects.destroy', $p) }}" method="POST" onsubmit="return confirm('Delete project?')" class="w-full sm:w-auto">
@@ -239,6 +251,12 @@
           </div>
           <div class="mt-4">{{ $projects->links() }}</div>
         @endif
+      </div>
+
+      <div x-cloak x-show="previewOpen" @click.self="closePreview()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div class="w-full max-w-4xl bg-white rounded-lg shadow-lg overflow-hidden">
+          <iframe :src="previewUrl" class="w-full h-[70vh]"></iframe>
+        </div>
       </div>
 
       {{-- Toast --}}
