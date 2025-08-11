@@ -4,6 +4,8 @@ namespace Tests\Unit;
 
 use App\Services\AiProvider;
 use Illuminate\Container\Container;
+use Illuminate\Cache\ArrayStore;
+use Illuminate\Cache\Repository;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Facade;
 use Illuminate\Support\Facades\Http;
@@ -13,10 +15,12 @@ class AiProviderPromptTest extends TestCase
 {
     public function test_prompt_placeholders_are_resolved(): void
     {
+        Facade::clearResolvedInstances();
         $container = new Container();
         Container::setInstance($container);
         Facade::setFacadeApplication($container);
         $container->singleton('http', fn () => new Factory());
+        $container->singleton('cache', fn () => new Repository(new ArrayStore()));
 
         $captured = null;
         Http::fake(function ($request) use (&$captured) {

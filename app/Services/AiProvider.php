@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AiProject;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -12,6 +13,7 @@ class AiProvider
 {
     protected string $provider;
     protected string $model;
+    protected bool $useCache = true;
 
     private const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
     private const ANTHROPIC_ENDPOINT = 'https://api.anthropic.com/v1/messages';
@@ -28,6 +30,12 @@ class AiProvider
     {
         $this->provider = env('AI_PROVIDER', 'openai');
         $this->model = env('AI_MODEL', $this->provider === 'anthropic' ? 'claude-3-haiku-20240307' : 'gpt-4o-mini');
+    }
+
+    public function withoutCache(): static
+    {
+        $this->useCache = false;
+        return $this;
     }
 
     public function generate(AiProject $project, string $type, string $locale = 'en', ?string $text = null): array
@@ -155,6 +163,13 @@ EOT;
             $prompt = "Using locale {$locale}, generate a {$type} in JSON for the following text:\n\n{$sanitizedText}";
         }
 
+        $cacheKey = 'ai:' . hash('sha256', $prompt);
+        if ($this->useCache && Cache::has($cacheKey)) {
+            $cached = Cache::get($cacheKey);
+            $this->useCache = true;
+            return $cached;
+        }
+
         if (preg_match('/{{[^}]+}}/', $prompt)) {
             throw new \RuntimeException('Unresolved prompt placeholders');
         }
@@ -241,12 +256,20 @@ EOT;
         $output = $usage['completion_tokens'] ?? ($usage['output_tokens'] ?? 0);
         $cost_cents = $this->calculateCost($this->model, $input, $output);
 
-        return [
+        $result = [
             'raw' => $data,
             'input_tokens' => $input,
             'output_tokens' => $output,
             'cost_cents' => $cost_cents,
         ];
+
+        if ($this->useCache) {
+            Cache::put($cacheKey, $result, now()->addMinutes((int) env('AI_CACHE_TTL', 60)));
+        }
+
+        $this->useCache = true;
+
+        return $result;
     }
 
     public static function extractContent(array $result): ?string

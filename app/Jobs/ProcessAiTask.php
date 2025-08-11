@@ -28,7 +28,7 @@ class ProcessAiTask implements ShouldQueue
     public int $tries = 3;
     public int $backoff = 10;
 
-    public function __construct(public AiTask $task, public string $locale)
+    public function __construct(public AiTask $task, public string $locale, public bool $useCache = true)
     {
     }
 
@@ -77,7 +77,8 @@ class ProcessAiTask implements ShouldQueue
             $payloadChunks = [];
 
             foreach ($chunks as $index => $chunk) {
-                $result = $provider->generate($project, $this->task->type, $this->locale, $chunk);
+                $result = ($this->useCache ? $provider : $provider->withoutCache())
+                    ->generate($project, $this->task->type, $this->locale, $chunk);
 
                 if (!empty($result['error']) || !empty($result['raw']['error'])) {
                     Log::error('AI provider error', $result['error'] ?? ['raw_error' => $result['raw']['error'] ?? null]);
@@ -216,7 +217,8 @@ class ProcessAiTask implements ShouldQueue
         $contents = [];
 
         foreach ($chunks as $index => $chunk) {
-            $result = $provider->generate($project, $this->task->type, $this->locale, $chunk);
+            $result = ($this->useCache ? $provider : $provider->withoutCache())
+                ->generate($project, $this->task->type, $this->locale, $chunk);
 
             if (!empty($result['error']) || !empty($result['raw']['error'])) {
                 Log::error('AI provider error', $result['error'] ?? ['raw_error' => $result['raw']['error'] ?? null]);
