@@ -19,7 +19,7 @@ class User extends Authenticatable
         'password',
         'role',         // admin, user, dll.
         'usage_tokens', // total token AI terpakai
-        'usage_cost',   // total biaya terpakai
+        'usage_cost_cents', // total biaya terpakai (dalam cents)
         'plan_id',      // untuk billing
         'locale',       // bahasa pilihan user
         'timezone',     // zona waktu user
@@ -36,7 +36,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'usage_tokens' => 'integer',
-            'usage_cost' => 'decimal:6',
+            'usage_cost_cents' => 'integer',
         ];
     }
 

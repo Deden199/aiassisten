@@ -75,6 +75,9 @@ class AiProvider
                 ]);
             } else {
                 $response = Http::withToken(env('OPENAI_API_KEY'))
+                    ->connectTimeout((int) env('AI_CONNECT_TIMEOUT', 30))
+                    ->timeout((int) env('AI_HTTP_TIMEOUT', 300))
+                    ->retry((int) env('AI_HTTP_RETRY', 2), (int) env('AI_HTTP_RETRY_MS', 1500))
                     ->post(self::OPENAI_ENDPOINT, [
                         'model'          => $this->model,
                         'response_format' => ['type' => 'json_object'],

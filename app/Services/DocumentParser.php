@@ -54,9 +54,10 @@ class DocumentParser
     protected function parsePdf(string $fullPath): string
     {
         try {
-            Pdf::setPdfBinary(config('services.pdftotext_binary'));
+return Pdf::fromPath($fullPath)
+    ->setPdfBinary(config('services.pdftotext_binary'))
+    ->text();
 
-            return Pdf::getText($fullPath);
         } catch (\Throwable $e) {
             try {
                 $parser = new PdfParser;
