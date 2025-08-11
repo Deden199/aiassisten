@@ -38,6 +38,93 @@ class AiProvider
         return $this;
     }
 
+    public function chat(AiProject $project, string $locale, array $messages): array
+    {
+        if ($this->provider === 'anthropic' && !env('ANTHROPIC_API_KEY')) {
+            return [
+                'error'        => ['status' => null, 'body' => 'missing anthropic api key'],
+                'raw'          => ['error' => 'missing anthropic api key'],
+                'input_tokens' => 0,
+                'output_tokens' => 0,
+                'cost_cents'   => 0,
+            ];
+        }
+
+        if ($this->provider === 'openai' && !env('OPENAI_API_KEY')) {
+            return [
+                'error'        => ['status' => null, 'body' => 'missing openai api key'],
+                'raw'          => ['error' => 'missing openai api key'],
+                'input_tokens' => 0,
+                'output_tokens' => 0,
+                'cost_cents'   => 0,
+            ];
+        }
+
+        try {
+            if ($this->provider === 'anthropic') {
+                $response = Http::withHeaders([
+                    'x-api-key'       => env('ANTHROPIC_API_KEY'),
+                    'anthropic-version' => '2023-06-01',
+                ])->connectTimeout((int) env('AI_CONNECT_TIMEOUT', 30))
+                    ->timeout((int) env('AI_HTTP_TIMEOUT', 300))
+                    ->retry((int) env('AI_HTTP_RETRY', 2), (int) env('AI_HTTP_RETRY_MS', 1500))
+                    ->post(self::ANTHROPIC_ENDPOINT, [
+                        'model'     => $this->model,
+                        'max_tokens' => 1024,
+                        'messages'  => $messages,
+                    ]);
+            } else {
+                $response = Http::withToken(env('OPENAI_API_KEY'))
+                    ->connectTimeout((int) env('AI_CONNECT_TIMEOUT', 30))
+                    ->timeout((int) env('AI_HTTP_TIMEOUT', 300))
+                    ->retry((int) env('AI_HTTP_RETRY', 2), (int) env('AI_HTTP_RETRY_MS', 1500))
+                    ->post(self::OPENAI_ENDPOINT, [
+                        'model'    => $this->model,
+                        'messages' => $messages,
+                    ]);
+            }
+        } catch (Throwable $e) {
+            Log::error('AI provider request exception', ['exception' => $e]);
+
+            return [
+                'error'        => ['status' => null, 'body' => $e->getMessage()],
+                'raw'          => [],
+                'input_tokens' => 0,
+                'output_tokens' => 0,
+                'cost_cents'   => 0,
+            ];
+        }
+
+        if (!$response->successful()) {
+            Log::error('AI provider request failed', [
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
+
+            return [
+                'error'        => ['status' => $response->status(), 'body' => $response->json() ?? $response->body()],
+                'raw'          => $response->json() ?? [],
+                'input_tokens' => 0,
+                'output_tokens' => 0,
+                'cost_cents'   => 0,
+            ];
+        }
+
+        $data = $response->json();
+        $usage = $data['usage'] ?? [];
+
+        $input = $usage['prompt_tokens'] ?? ($usage['input_tokens'] ?? 0);
+        $output = $usage['completion_tokens'] ?? ($usage['output_tokens'] ?? 0);
+        $cost_cents = $this->calculateCost($this->model, $input, $output);
+
+        return [
+            'raw' => $data,
+            'input_tokens' => $input,
+            'output_tokens' => $output,
+            'cost_cents' => $cost_cents,
+        ];
+    }
+
     public function generate(AiProject $project, string $type, string $locale = 'en', ?string $text = null): array
     {
         $text = $text ?? ($project->source_text ?? '');

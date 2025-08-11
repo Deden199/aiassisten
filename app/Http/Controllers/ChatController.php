@@ -15,8 +15,10 @@ class ChatController extends Controller
     public function send(Request $request, AiProvider $provider)
     {
         $data = $request->validate([
-            'message' => 'required|string|max:8000',
-            'locale'  => 'nullable|string|max:10',
+            'messages'       => 'required|array|min:1',
+            'messages.*.role'    => 'required|string',
+            'messages.*.content' => 'required|string|max:8000',
+            'locale'        => 'nullable|string|max:10',
         ]);
         $locale = $data['locale'] ?? app()->getLocale();
         $fakeProject = (object)[
@@ -28,7 +30,7 @@ class ChatController extends Controller
             'tenant' => $request->user()->tenant,
         ];
 
-        $result = $provider->chat($fakeProject, $locale, $data['message']);
+        $result = $provider->chat($fakeProject, $locale, $data['messages']);
         $content = \App\Services\AiProvider::extractContent($result);
         return response()->json([
             'ok' => true,

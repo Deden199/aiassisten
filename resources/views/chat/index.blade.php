@@ -21,8 +21,10 @@
 const box = document.getElementById('messages');
 const form = document.getElementById('chatForm');
 const input = document.getElementById('msg');
+let history = [];
 
 function add(role, text){
+  history.push({ role, content: text });
   const item = document.createElement('div');
   item.className = role === 'user' ? 'text-right' : 'text-left';
   item.innerHTML = `<div class="inline-block rounded-2xl px-3 py-2 ${role==='user'?'bg-violet-600 text-white':'bg-gray-100'}">${text.replace(/</g,'&lt;')}</div>`;
@@ -33,9 +35,13 @@ form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const text = input.value.trim(); if(!text) return;
   add('user', text); input.value='';
-  const res = await fetch('{{ route('chat.send') }}', { method:'POST', headers:{'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept':'application/json','Content-Type':'application/json'}, body: JSON.stringify({message:text})});
+  const res = await fetch('{{ route('chat.send') }}', {
+    method:'POST',
+    headers:{'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept':'application/json','Content-Type':'application/json'},
+    body: JSON.stringify({messages: history})
+  });
   const data = await res.json();
-  add('bot', data.reply || 'No reply');
+  add('assistant', data.reply || 'No reply');
 });
 </script>
 @endsection
