@@ -16,34 +16,17 @@ class TextChunker
     }
 
     /**
-     * Split text into chunks by token count. Tokens are approximated
-     * by splitting on whitespace.
+     * Split text into chunks by token count using the tokenizer service.
      *
      * @return array<int,string>
      */
-    public static function chunk(string $text, int $maxTokens = 800): array
+    public static function chunk(string $text, int $maxTokens = 15000): array
     {
         $clean = self::clean($text);
         if ($clean === '') {
             return [];
         }
 
-        $tokens = preg_split('/\s+/u', $clean, -1, PREG_SPLIT_NO_EMPTY);
-        $chunks = [];
-        $current = [];
-
-        foreach ($tokens as $token) {
-            $current[] = $token;
-            if (count($current) >= $maxTokens) {
-                $chunks[] = implode(' ', $current);
-                $current = [];
-            }
-        }
-
-        if ($current) {
-            $chunks[] = implode(' ', $current);
-        }
-
-        return $chunks;
+        return Tokenizer::chunk($clean, $maxTokens);
     }
 }

@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Support\TextChunker;
+use App\Support\Tokenizer;
 use PHPUnit\Framework\TestCase;
 
 class TextChunkerTest extends TestCase
@@ -19,5 +20,9 @@ class TextChunkerTest extends TestCase
         $text = 'one two three four five';
         $chunks = TextChunker::chunk($text, 2);
         $this->assertSame(['one two', 'three four', 'five'], $chunks);
+
+        foreach ($chunks as $chunk) {
+            $this->assertLessThanOrEqual(2, Tokenizer::count($chunk));
+        }
     }
 }
