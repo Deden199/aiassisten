@@ -6,6 +6,7 @@ use App\Models\AiTask;
 use App\Models\AiTaskVersion;
 use App\Models\UsageLog;
 use App\Services\AiProvider;
+use App\Services\DocumentParser;
 use App\Support\TextChunker;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -16,6 +17,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
+use App\Exceptions\DocumentParseException;
 use Throwable;
 
 class ProcessAiTask implements ShouldQueue
@@ -29,7 +31,7 @@ class ProcessAiTask implements ShouldQueue
     {
     }
 
-    public function handle(AiProvider $provider): void
+    public function handle(AiProvider $provider, DocumentParser $parser): void
     {
         $this->task->update([
             'status'  => 'running',
@@ -44,7 +46,17 @@ class ProcessAiTask implements ShouldQueue
             $disk = $project->source_disk;
             $path = $project->source_path;
             if (Storage::disk($disk)->exists($path)) {
-                $text = (string) Storage::disk($disk)->get($path);
+                try {
+                    $text = $parser->parse($disk, $path);
+                    $text = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+                } catch (DocumentParseException $e) {
+                    Log::error('Document parse error', ['path' => $path, 'message' => $e->getMessage()]);
+                    $this->task->update([
+                        'status'  => 'failed',
+                        'message' => 'Document parse error',
+                    ]);
+                    return;
+                }
             }
         }
 
