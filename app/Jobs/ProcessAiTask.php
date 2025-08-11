@@ -63,8 +63,8 @@ class ProcessAiTask implements ShouldQueue
             foreach ($chunks as $chunk) {
                 $result = $provider->generate($project, $this->task->type, $this->locale, $chunk);
 
-                if (isset($result['error'])) {
-                    Log::error('AI provider error', $result['error']);
+                if (!empty($result['error']) || !empty($result['raw']['error'])) {
+                    Log::error('AI provider error', $result['error'] ?? ['raw_error' => $result['raw']['error'] ?? null]);
                     $this->task->update([
                         'status'  => 'failed',
                         'message' => 'Provider error',
@@ -152,8 +152,8 @@ class ProcessAiTask implements ShouldQueue
         foreach ($chunks as $index => $chunk) {
             $result = $provider->generate($project, $this->task->type, $this->locale, $chunk);
 
-            if (isset($result['error'])) {
-                Log::error('AI provider error', $result['error']);
+            if (!empty($result['error']) || !empty($result['raw']['error'])) {
+                Log::error('AI provider error', $result['error'] ?? ['raw_error' => $result['raw']['error'] ?? null]);
                 $this->task->update([
                     'status'  => 'failed',
                     'message' => 'Provider error',
