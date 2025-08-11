@@ -15,21 +15,24 @@
                 this.status = d.status;
                 this.message = d.message;
                 this.downloadUrl = d.download_url;
-                if (d.status === 'done' && d.versions.length > 0) {
-                    this.version = d.versions[0];
-                    let content = this.version.payload?.content || '';
-                    let raw = this.version.payload?.chunks?.[0]?.raw;
-                    if (!content && raw) {
-                        content = raw?.choices?.[0]?.message?.content || raw?.content?.[0]?.text || '';
+                if (d.status === 'done') {
+                    if (d.versions.length > 0) {
+                        this.version = d.versions[0];
+                        let content = this.version.payload?.content || '';
+                        let raw = this.version.payload?.chunks?.[0]?.raw;
+                        if (!content && raw) {
+                            content = raw?.choices?.[0]?.message?.content || raw?.content?.[0]?.text || '';
+                        }
+                        try {
+                            this.result = content ? JSON.parse(content) : {};
+                        } catch (e) {
+                            this.result = { summary: content };
+                        }
                     }
-                    try {
-                        this.result = content ? JSON.parse(content) : {};
-                    } catch (e) {
-                        this.result = { summary: content };
-                    }
-                } else if (d.status !== 'failed' && d.status !== 'done') {
-                    setTimeout(() => this.poll(), 2000);
+                    return;
                 }
+                if (d.status === 'failed') return;
+                setTimeout(() => this.poll(), 2000);
             });
     }
 }" x-init="poll" class="space-y-2">
