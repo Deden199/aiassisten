@@ -172,11 +172,12 @@
                     </span>
                   </div>
 
+                  <!-- Action buttons -->
                   <div class="flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full">
                     <button
                       @click="run('{{ $p->id }}','summarize','{{ route('tasks.summarize', $p) }}','{{ e($p->title) }}')"
                       :disabled="isPending('{{ $p->id }}','summarize')"
-                      class="px-3 py-2 rounded-lg border hover:bg-violet-50 flex items-center gap-2 disabled:opacity-50 w-full sm:w-auto">
+                      class="w-full sm:w-auto px-3 py-2 rounded-lg border hover:bg-violet-50 flex items-center gap-2 disabled:opacity-50">
                       <svg x-show="isPending('{{ $p->id }}','summarize')" class="h-4 w-4 animate-spin" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                       </svg>
@@ -186,7 +187,7 @@
                     <button
                       @click="run('{{ $p->id }}','mindmap','{{ route('tasks.mindmap', $p) }}','{{ e($p->title) }}')"
                       :disabled="isPending('{{ $p->id }}','mindmap')"
-                      class="px-3 py-2 rounded-lg border hover:bg-fuchsia-50 flex items-center gap-2 disabled:opacity-50 w-full sm:w-auto">
+                      class="w-full sm:w-auto px-3 py-2 rounded-lg border hover:bg-fuchsia-50 flex items-center gap-2 disabled:opacity-50">
                       <svg x-show="isPending('{{ $p->id }}','mindmap')" class="h-4 w-4 animate-spin" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                       </svg>
@@ -196,7 +197,7 @@
                     <button
                       @click="run('{{ $p->id }}','slides','{{ route('tasks.slides', $p) }}','{{ e($p->title) }}')"
                       :disabled="isPending('{{ $p->id }}','slides')"
-                      class="px-3 py-2 rounded-lg border hover:bg-rose-50 flex items-center gap-2 disabled:opacity-50 w-full sm:w-auto">
+                      class="w-full sm:w-auto px-3 py-2 rounded-lg border hover:bg-rose-50 flex items-center gap-2 disabled:opacity-50">
                       <svg x-show="isPending('{{ $p->id }}','slides')" class="h-4 w-4 animate-spin" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                       </svg>
@@ -204,12 +205,12 @@
                     </button>
 
                     @if($slidesVersion && $slidesVersion->file_path)
-                      <a href="{{ route('versions.download', $slidesVersion) }}" class="px-3 py-2 rounded-lg border hover:bg-emerald-50 w-full sm:w-auto text-center">Download PPTX</a>
+                      <a href="{{ route('versions.download', $slidesVersion) }}" class="w-full sm:w-auto px-3 py-2 rounded-lg border hover:bg-emerald-50 text-center">Download PPTX</a>
                     @endif
 
                     <form action="{{ route('projects.destroy', $p) }}" method="POST" onsubmit="return confirm('Delete project?')" class="w-full sm:w-auto">
                       @csrf @method('DELETE')
-                      <button class="px-3 py-2 rounded-lg border text-rose-600 hover:bg-rose-50 w-full sm:w-auto">Delete</button>
+                      <button class="w-full sm:w-auto px-3 py-2 rounded-lg border text-rose-600 hover:bg-rose-50">Delete</button>
                     </form>
                   </div>
                 </div>
