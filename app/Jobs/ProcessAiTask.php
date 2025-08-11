@@ -54,6 +54,7 @@ class ProcessAiTask implements ShouldQueue
 
         $payloadChunks = [];
         $contents = [];
+        $slides = [];
         $inputTokens = 0;
         $outputTokens = 0;
         $costCents = 0;
@@ -61,17 +62,40 @@ class ProcessAiTask implements ShouldQueue
         foreach ($chunks as $index => $chunk) {
             $result = $provider->generate($project, $this->task->type, $this->locale, $chunk);
 
-            $piece = $result['content'] ?? $result['text'] ?? null;
-            if (is_string($piece) && $piece !== '') {
-                $contents[] = trim($piece);
-            }
+            $piece = $result['content']
+                ?? $result['text']
+                ?? ($result['raw']['choices'][0]['message']['content'] ?? ($result['raw']['content'][0]['text'] ?? null));
 
-            $payloadChunks[] = [
-                'index'   => $index,
-                'chunk'   => $chunk,
-                'content' => $piece,
-                'raw'     => $result['raw'] ?? [],
-            ];
+            if ($this->task->type === 'slides') {
+                $decoded = [];
+                if (is_string($piece) && $piece !== '') {
+                    try {
+                        $decoded = json_decode($piece, true, 512, JSON_THROW_ON_ERROR);
+                    } catch (Throwable $e) {
+                        $decoded = [];
+                    }
+                }
+
+                $slidesData = $decoded['slides'] ?? (is_array($decoded) ? $decoded : []);
+                foreach ($slidesData as $s) {
+                    $slides[] = [
+                        'title'   => $s['title'] ?? '',
+                        'bullets' => $s['bullets'] ?? $s['bullet_points'] ?? [],
+                        'notes'   => $s['notes'] ?? $s['speaker_notes'] ?? null,
+                    ];
+                }
+            } else {
+                if (is_string($piece) && $piece !== '') {
+                    $contents[] = trim($piece);
+                }
+
+                $payloadChunks[] = [
+                    'index'   => $index,
+                    'chunk'   => $chunk,
+                    'content' => $piece,
+                    'raw'     => $result['raw'] ?? [],
+                ];
+            }
 
             $inputTokens  += (int) ($result['input_tokens']  ?? 0);
             $outputTokens += (int) ($result['output_tokens'] ?? 0);
@@ -79,7 +103,9 @@ class ProcessAiTask implements ShouldQueue
         }
 
         // Gabungkan content untuk preview UI (summary/mindmap). Slides bisa di-export saat download.
-        $combinedContent = trim(implode("\n\n", array_filter($contents)));
+        $combinedContent = $this->task->type === 'slides'
+            ? ''
+            : trim(implode("\n\n", array_filter($contents)));
 
         $this->task->update([
             'status'        => 'done', // <— konsisten dengan UI (queued|running|done|failed)
@@ -91,18 +117,6 @@ class ProcessAiTask implements ShouldQueue
 
         // Simpan payload khusus per tipe task
         if ($this->task->type === 'slides') {
-            $slides = [];
-            try {
-                $decoded = json_decode($combinedContent, true, 512, JSON_THROW_ON_ERROR);
-                if (isset($decoded['slides']) && is_array($decoded['slides'])) {
-                    $slides = $decoded['slides'];
-                } elseif (is_array($decoded)) {
-                    $slides = $decoded;
-                }
-            } catch (Throwable $e) {
-                $slides = [];
-            }
-
             AiTaskVersion::create([
                 'id'      => (string) Str::uuid(),
                 'task_id' => $this->task->id,
