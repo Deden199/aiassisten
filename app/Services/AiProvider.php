@@ -38,7 +38,7 @@ class AiProvider
         return $this;
     }
 
-    public function chat(AiProject $project, string $locale, string $message): array
+    public function chat(AiProject $project, string $locale, array $messages): array
     {
         if ($this->provider === 'anthropic' && !env('ANTHROPIC_API_KEY')) {
             return [
@@ -72,9 +72,7 @@ class AiProvider
                     ->post(self::ANTHROPIC_ENDPOINT, [
                         'model' => $this->model,
                         'max_tokens' => 1024,
-                        'messages' => [
-                            ['role' => 'user', 'content' => $message],
-                        ],
+                        'messages' => $messages,
                     ]);
             } else {
                 $response = Http::withToken(env('OPENAI_API_KEY'))
@@ -83,9 +81,7 @@ class AiProvider
                     ->retry((int) env('AI_HTTP_RETRY', 2), (int) env('AI_HTTP_RETRY_MS', 1500))
                     ->post(self::OPENAI_ENDPOINT, [
                         'model' => $this->model,
-                        'messages' => [
-                            ['role' => 'user', 'content' => $message],
-                        ],
+                        'messages' => $messages,
                     ]);
             }
         } catch (Throwable $e) {

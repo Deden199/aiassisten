@@ -43,7 +43,9 @@ class AiProviderChatTest extends TestCase
         };
 
         $provider = new AiProvider();
-        $result = $provider->chat($project, 'en', 'Hello');
+        $result = $provider->chat($project, 'en', [
+            ['role' => 'user', 'content' => 'Hello'],
+        ]);
 
         $this->assertSame('Hi there!', AiProvider::extractContent($result));
         $this->assertSame(5, $result['input_tokens']);
@@ -60,7 +62,9 @@ class AiProviderChatTest extends TestCase
         };
 
         $provider = new AiProvider();
-        $result = $provider->chat($project, 'en', 'Hello');
+        $result = $provider->chat($project, 'en', [
+            ['role' => 'user', 'content' => 'Hello'],
+        ]);
 
         $this->assertSame('missing openai api key', $result['error']['body'] ?? null);
         $this->assertSame('missing openai api key', $result['raw']['error'] ?? null);
@@ -76,7 +80,9 @@ class AiProviderChatTest extends TestCase
         };
 
         $provider = new AiProvider();
-        $result = $provider->chat($project, 'en', 'Hello');
+        $result = $provider->chat($project, 'en', [
+            ['role' => 'user', 'content' => 'Hello'],
+        ]);
 
         $this->assertSame('missing anthropic api key', $result['error']['body'] ?? null);
         $this->assertSame('missing anthropic api key', $result['raw']['error'] ?? null);
