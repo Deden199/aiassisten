@@ -74,8 +74,9 @@ class ProcessAiTask implements ShouldQueue
             $slides = [];
             $theme = $project->slideTemplate ? $project->slideTemplate->toArray() : \App\Models\SlideTemplate::defaultTheme();
             $requireBullets = data_get($theme, 'rules.require_bullets', true);
+            $payloadChunks = [];
 
-            foreach ($chunks as $chunk) {
+            foreach ($chunks as $index => $chunk) {
                 $result = $provider->generate($project, $this->task->type, $this->locale, $chunk);
 
                 if (!empty($result['error']) || !empty($result['raw']['error'])) {
@@ -88,14 +89,29 @@ class ProcessAiTask implements ShouldQueue
                 }
 
                 $piece = AiProvider::extractContent($result);
+                $payloadChunks[] = [
+                    'index'   => $index,
+                    'chunk'   => $chunk,
+                    'content' => $piece,
+                    'raw'     => $result['raw'] ?? [],
+                ];
 
-                $decoded = [];
-                if (is_string($piece) && $piece !== '') {
-                    try {
-                        $decoded = json_decode($piece, true, 512, JSON_THROW_ON_ERROR);
-                    } catch (Throwable $e) {
-                        $decoded = [];
-                    }
+                if (!is_string($piece) || $piece === '') {
+                    $this->task->update([
+                        'status'  => 'failed',
+                        'message' => 'invalid json',
+                    ]);
+                    return;
+                }
+
+                try {
+                    $decoded = json_decode($piece, true, 512, JSON_THROW_ON_ERROR);
+                } catch (Throwable $e) {
+                    $this->task->update([
+                        'status'  => 'failed',
+                        'message' => 'invalid json',
+                    ]);
+                    return;
                 }
 
                 if (isset($decoded['theme']) && is_array($decoded['theme'])) {
@@ -103,28 +119,41 @@ class ProcessAiTask implements ShouldQueue
                 }
 
                 $slidesData = $decoded['slides'] ?? [];
-                foreach ($slidesData as $s) {
-                    $bullets = $s['bullets'] ?? $s['bullet_points'] ?? [];
-                    if (is_string($bullets)) {
-                        $bullets = array_values(array_filter(array_map('trim', preg_split('/\r?\n/', $bullets))));
-                    }
-                    if ($requireBullets && (!is_array($bullets) || count(array_filter($bullets)) === 0)) {
-                        $bullets = $this->fallbackBullets($chunk);
-                    }
-
+                if (empty($slidesData)) {
+                    $heading = trim(strtok($chunk, "\n")) ?: ($project->source_filename ? pathinfo($project->source_filename, PATHINFO_FILENAME) : ($project->title ?? 'Slide'));
                     $slides[] = [
-                        'title'   => $s['title'] ?? '',
-                        'bullets' => is_array($bullets) ? array_values(array_filter($bullets)) : [],
-                        'notes'   => $s['notes'] ?? $s['speaker_notes'] ?? null,
-                        'background' => $s['background'] ?? null,
-                        'colors' => $s['colors'] ?? [],
+                        'title' => $heading,
+                        'bullets' => $this->fallbackBullets($chunk),
+                        'notes' => null,
+                        'background' => null,
+                        'colors' => [],
                     ];
+                } else {
+                    foreach ($slidesData as $s) {
+                        $bullets = $s['bullets'] ?? $s['bullet_points'] ?? [];
+                        if (is_string($bullets)) {
+                            $bullets = array_values(array_filter(array_map('trim', preg_split('/\r?\n/', $bullets))));
+                        }
+                        if ($requireBullets && (!is_array($bullets) || count(array_filter($bullets)) === 0)) {
+                            $bullets = $this->fallbackBullets($chunk);
+                        }
+
+                        $slides[] = [
+                            'title'   => $s['title'] ?? '',
+                            'bullets' => is_array($bullets) ? array_values(array_filter($bullets)) : [],
+                            'notes'   => $s['notes'] ?? $s['speaker_notes'] ?? null,
+                            'background' => $s['background'] ?? null,
+                            'colors' => $s['colors'] ?? [],
+                        ];
+                    }
                 }
 
                 $inputTokens  += (int) ($result['input_tokens']  ?? 0);
                 $outputTokens += (int) ($result['output_tokens'] ?? 0);
                 $costCents    += (int) ($result['cost_cents']    ?? 0);
             }
+
+            $combinedJson = json_encode(['theme' => $theme, 'slides' => $slides], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
             $this->task->update([
                 'status'        => 'done',
@@ -139,8 +168,8 @@ class ProcessAiTask implements ShouldQueue
                 'task_id' => $this->task->id,
                 'locale'  => $this->locale,
                 'payload' => [
-                    'theme' => $theme,
-                    'slides' => $slides,
+                    'content' => $combinedJson,
+                    'chunks'  => $payloadChunks,
                 ],
             ]);
 

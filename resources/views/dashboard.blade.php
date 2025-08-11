@@ -37,12 +37,16 @@
               <option value="es">Spanish</option>
               <option value="fr">French</option>
             </select>
-            <select name="slide_template_id" class="block w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400">
-              <option value="">Default template</option>
-              @foreach($templates as $tpl)
-                <option value="{{ $tpl->id }}">{{ $tpl->name }}</option>
-              @endforeach
-            </select>
+            <div class="space-y-1 sm:col-span-2">
+              <label for="slide_template_id" class="text-sm font-medium text-gray-700">Slide Template</label>
+              <select id="slide_template_id" name="slide_template_id" class="block w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400">
+                <option value="">Default template</option>
+                @foreach($templates as $tpl)
+                  <option value="{{ $tpl->id }}">{{ $tpl->name }}</option>
+                @endforeach
+              </select>
+              <p class="text-xs text-gray-500">Pick a design to style your slides.</p>
+            </div>
             <div class="text-xs text-gray-500 sm:col-span-2">PDF/DOCX/PPTX/TXT up to 10MB. Private storage.</div>
           </div>
 
