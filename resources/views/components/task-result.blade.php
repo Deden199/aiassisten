@@ -80,41 +80,33 @@
                             </template>
                         </div>
                     </div>
-                    <div x-show="openPreview === `preview-version-${v.id}`" :id="`preview-version-${v.id}`" class="mt-2 space-y-3">
-                      <template x-if="v.parsed.slides && v.parsed.slides.length">
-                        <div class="space-y-3">
-                          <template x-for="(s, idx) in v.parsed.slides.slice(0,3)" :key="idx">
-                            <div class="border rounded p-2">
-                              <div class="flex items-center gap-2 mb-1">
-                                <h4 class="text-sm font-semibold" x-text="s.title"></h4>
-                                <template x-if="s.colors">
-                                  <div class="flex gap-1">
-                                    <span class="w-3 h-3 rounded" :style="`background:${s.colors.title}`"></span>
-                                    <span class="w-3 h-3 rounded" :style="`background:${s.colors.bullets}`"></span>
-                                  </div>
-                                </template>
-                              </div>
-                              <ul class="list-disc ml-4 text-sm text-gray-700 dark:text-gray-300">
-                                <template x-for="(b, i) in s.bullets" :key="i">
-                                  <li x-text="b"></li>
-                                </template>
-                              </ul>
-                            </div>
-                          </template>
-                        </div>
-                      </template>
+<div x-show="openPreview === `preview-version-${v.id}`" :id="`preview-version-${v.id}`" class="mt-2 space-y-3">
+  <template x-if="v.parsed.slides && v.parsed.slides.length">
+    <div class="space-y-3">
+      <template x-for="(s, idx) in v.parsed.slides.slice(0,3)" :key="idx">
+        <div class="border rounded p-2">
+          <h4 class="text-sm font-semibold" x-text="s.title"></h4>
+          <ul class="list-disc ml-4 text-sm text-gray-700 dark:text-gray-300">
+            <template x-for="(b, i) in s.bullets" :key="i">
+              <li x-text="b"></li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </div>
+  </template>
 
-                      <template x-if="!v.parsed.slides">
-                        <div>
-                          <h4 class="text-sm font-semibold" x-text="v.parsed.title"></h4>
-                          <ul class="list-disc ml-4 text-sm text-gray-700 dark:text-gray-300">
-                            <template x-for="(b, i) in v.parsed.bullets" :key="i">
-                              <li x-text="b"></li>
-                            </template>
-                          </ul>
-                        </div>
-                      </template>
-                    </div>
+  <template x-if="!v.parsed.slides">
+    <div>
+      <h4 class="text-sm font-semibold" x-text="v.parsed.title"></h4>
+      <ul class="list-disc ml-4 text-sm text-gray-700 dark:text-gray-300">
+        <template x-for="(b, i) in v.parsed.bullets" :key="i">
+          <li x-text="b"></li>
+        </template>
+      </ul>
+    </div>
+  </template>
+</div>
                 </div>
             </template>
         </div>

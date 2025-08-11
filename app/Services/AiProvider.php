@@ -60,48 +60,88 @@ class AiProvider
                 ]
             ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-            $prompt = <<<EOT
-You are a presentation designer. Return a **single valid JSON object** only (no extra text, no markdown).
+$prompt = <<<EOT
+You are a senior presentation designer. OUTPUT MUST BE ONE VALID JSON OBJECT ONLY (no markdown, no prose).
 
-REQUIRED THEME (override defaults):
-{$themeJson}
+GOALS:
+- Ubah materi menjadi pitch-deck/slide deck yang visual & ringkas, berbahasa {{locale}}.
+- Variasikan layout, gunakan warna kontras, dan beri saran gambar relevan (URL publik).
+- Jangan ulang-ulang kalimat; tiap slide harus punya nilai baru.
+
+ALLOWED LAYOUTS:
+- "cover"               // big title + subtitle
+- "title-bullets"       // title + 3–6 bullets
+- "image-right"         // title + bullets (kiri), image (kanan)
+- "image-left"          // title + bullets (kanan), image (kiri)
+- "two-column"          // title + 2 kolom bullet (3–5 item/kolom)
+- "quote"               // quote besar + author
+- "stat"                // angka besar + deskripsi singkat
+- "section-break"       // divider antar bab
+
+BACKGROUND OPTIONS per slide:
+{ "type":"solid|gradient|image", "color":"#HEX", "gradient":{ "from":"#HEX","to":"#HEX" }, "image_url": "https://..." }
+
+COLORS per slide (opsional): { "title":"#HEX", "bullets":"#HEX", "accent":"#HEX" }
+
+THEME DEFAULTS (may override per slide):
+{{theme_json}}
 
 REQUIREMENTS:
-- Create {$slidesMin}-{$slidesMax} slides.
-- Each slide MUST include:
-  - "title": short string
-  - "bullets": 3–6 concise bullets (no numbering)
-  - "background": { "type":"solid|gradient|image", "color":"#HEX", "gradient":{ "from":"#HEX", "to":"#HEX" }, "image_url": null|url }
-  - "colors": { "title":"#HEX", "bullets":"#HEX", "accent":"#HEX" }
-- Use the default background if slide background is not specified.
-- Language: {$locale}.
-- Output **JSON only**.
+- Buat {{slides_min}}–{{slides_max}} slides. Campurkan minimal 4 jenis layout.
+- Bahasa: {{locale}}. Judul singkat & punchy (≤60 karakter).
+- Bullets ringkas (maks 12 kata/point), tanpa numbering manual.
+- Untuk layout image-left/right, sediakan "image_url" (HTTPS, aman & relevan topik).
+- Untuk "stat", isi "stat_value" (mis. "99.95%") + "subtitle" singkat.
+- Untuk "quote", isi "quote" & "author".
+- Opsional: "notes" (speaker notes) maksimal 3 baris per slide, ringkas actionable.
+- JANGAN sertakan markdown, code fence, atau teks di luar JSON.
+- Jangan cantumkan data sensitif/pribadi. Hindari URL yang membutuhkan login.
 
-SCHEMA:
+SCHEMA STRICT:
 {
   "theme": {
-    "palette": { "background":"#0B1220","primary":"#60A5FA","secondary":"#A78BFA","accent":"#34D399" },
-    "font": { "family": null, "title_size": 44, "body_size": 24, "title_weight": "bold", "body_weight": "normal" },
+    "palette": { "background":"#HEX","primary":"#HEX","secondary":"#HEX","accent":"#HEX" },
+    "font": { "family":"Inter", "title_size":44, "body_size":22, "title_weight":"bold", "body_weight":"normal" },
     "layout": {
-      "title": { "x":30,"y":30,"w":900,"h":80,"align":"left" },
-      "bullets": { "x":40,"y":130,"w":900,"h":400,"line_spacing":1.25,"indent":10 }
-    },
-    "background_default": { "type":"gradient","color":"#0B1220","gradient":{"from":"#0EA5E9","to":"#111827"},"image_url": null }
+      "title":  { "x":60, "y":40,  "w":860, "h":100, "align":"left" },
+      "bullets":{ "x":60, "y":160, "w":860, "h":340, "line_spacing":1.25, "indent":16, "size":22 },
+      "background_default": { "color":"#0B1220" }
+    }
   },
   "slides": [
     {
-      "title": "string",
-      "bullets": ["string","string","string"],
-      "notes": "optional",
-      "background": { "type":"solid","color":"#0B1220","gradient":{"from":"#...","to":"#..."},"image_url": null },
-      "colors": { "title":"#FFFFFF","bullets":"#D1D5DB","accent":"#34D399" }
+      "layout": "title-bullets|cover|image-right|image-left|two-column|quote|stat|section-break",
+      "title": "string (≤60 chars)",
+      "subtitle": "string optional",
+      "bullets": ["string","string","string"]  // omit for cover/quote/stat/section-break
+      "col1": ["string","string"]               // only for two-column
+      "col2": ["string","string"],              // only for two-column
+      "stat_value": "string",                   // only for stat
+      "quote": "string",                        // only for quote
+      "author": "string",                       // only for quote
+      "image_url": "https://...",               // only for image-left/right (optional but recommended)
+      "background": { "type":"solid|gradient|image", "color":"#HEX", "gradient":{ "from":"#HEX","to":"#HEX" }, "image_url":"https://..." },
+      "colors": { "title":"#HEX", "bullets":"#HEX", "accent":"#HEX" },
+      "notes": ["max 3 short lines", "why it matters", "what to do next"]
     }
   ]
 }
 
+STYLE GUIDELINES:
+- Gunakan tone profesional & jelas. Hindari jargon berlebihan.
+- Ubah paragraf panjang menjadi bullets tajam & non-berulang.
+- Prioritaskan insight/action daripada kutipan literal dari sumber.
+- Pakai variasi warna (palette) agar tiap slide terasa hidup, tapi konsisten.
+
+SOURCE MATERIAL (summarize & transform, do not copy verbatim unless short terms):
+{{source_text}}
+
+LANGUAGE: {$locale}
+Return JSON only.
 SOURCE:
 {$text}
 EOT;
+
         } else {
             $prompt = "Using locale {$locale}, generate a {$type} in JSON for the following text:\n\n{$text}";
         }

@@ -25,9 +25,9 @@ class ProjectController extends Controller
                     ]),
             ])
             ->latest()
-            ->paginate(8);
+            ->paginate(12);
 
-        return view('dashboard', [
+        return view('projects.index', [
             'projects' => $projects,
             'templates' => SlideTemplate::orderBy('name')->get(['id','name']),
         ]);
@@ -61,7 +61,7 @@ class ProjectController extends Controller
             'id' => (string) Str::uuid(),
             'tenant_id' => $r->user()->tenant_id,
             'user_id' => $r->user()->id,
-            'title' => $r->string('title'),
+            'title' => $r->input('title'),
             'source_filename' => $filename,
             'source_disk' => $disk,
             'source_path' => $path,
@@ -71,7 +71,7 @@ class ProjectController extends Controller
             'slide_template_id' => $r->input('slide_template_id'),
         ]);
 
-        return back()->with('ok', 'Project created.');
+        return redirect()->route('projects.index')->with('ok', 'Project created.');
     }
 
     public function destroy(Request $r, AiProject $project)

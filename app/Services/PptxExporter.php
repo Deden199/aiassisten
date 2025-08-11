@@ -15,8 +15,8 @@ use PhpOffice\PhpPresentation\Style\Fill;
 use PhpOffice\PhpPresentation\Style\Alignment;
 use PhpOffice\PhpPresentation\Style\Bullet;
 use PhpOffice\PhpPresentation\Style\Color;
-use PhpOffice\PhpPresentation\Shape\Drawing;
 use PhpOffice\PhpPresentation\Shape\RichText;
+use PhpOffice\PhpPresentation\Shape\Drawing\File as DrawingFile;
 
 class PptxExporter
 {
@@ -24,101 +24,43 @@ class PptxExporter
 
     public function export(AiTaskVersion $version): void
     {
-        $rawPayload = $version->payload ?? [];
-        if (isset($rawPayload['content']) && is_string($rawPayload['content'])) {
-            $decoded = json_decode($rawPayload['content'], true);
-            $payload = is_array($decoded) ? $decoded : [];
-        } else {
-            $payload = $rawPayload;
-        }
-        $theme = $payload['theme'] ?? SlideTemplate::defaultTheme();
-        $slides = $payload['slides'] ?? $payload;
+        $payload = $this->parsePayload($version->payload ?? []);
+        $theme   = $payload['theme'] ?? SlideTemplate::defaultTheme();
+        $slides  = $payload['slides'] ?? [];
+
         $presentation = new PhpPresentation();
         $this->tempFiles = [];
 
-        foreach ($slides as $index => $data) {
-            $slide = $index === 0 ? $presentation->getActiveSlide() : $presentation->createSlide();
+        $palette = $theme['palette'] ?? [
+            'background' => '#0B1220',
+            'primary'    => '#60A5FA',
+            'secondary'  => '#A78BFA',
+            'accent'     => '#34D399',
+        ];
+        $accentCycle = [$palette['primary'], $palette['secondary'], $palette['accent']];
 
-            $bg = $data['background'] ?? null;
-            $this->applyBackground($slide, $bg, $theme);
+        foreach ($slides as $i => $s) {
+            $slide = $i === 0 ? $presentation->getActiveSlide() : $presentation->createSlide();
+            $this->applyBackground($slide, $s['background'] ?? null, $theme);
 
-            $titleLayout = $theme['layout']['title'] ?? ['x'=>30,'y'=>30,'w'=>900,'h'=>80,'align'=>'left'];
-            $titleShape = $slide->createRichTextShape();
-            $titleShape->setWidth($titleLayout['w']);
-            $titleShape->setHeight($titleLayout['h']);
-            $titleShape->setOffsetX($titleLayout['x']);
-            $titleShape->setOffsetY($titleLayout['y']);
-            $align = $titleLayout['align'] ?? 'left';
-            $alignment = Alignment::HORIZONTAL_LEFT;
-            if ($align === 'center') $alignment = Alignment::HORIZONTAL_CENTER;
-            if ($align === 'right') $alignment = Alignment::HORIZONTAL_RIGHT;
-            $titleShape->getActiveParagraph()->getAlignment()->setHorizontal($alignment);
+            $titleColor  = $s['colors']['title']   ?? $palette['primary'];
+            $bulletsCol  = $s['colors']['bullets'] ?? $palette['secondary'];
+            $accentColor = $s['colors']['accent']  ?? $accentCycle[$i % count($accentCycle)];
 
-            $title = is_string($data['title'] ?? null) ? $data['title'] : 'Slide ' . ($index + 1);
-            $run = $titleShape->createTextRun($this->sanitize($title));
-            $titleFont = $run->getFont();
-            if ($family = $theme['font']['family'] ?? null) {
-                $titleFont->setName($family);
-            }
-            $titleFont->setSize($theme['font']['title_size'] ?? 24);
-            $titleFont->setBold(($theme['font']['title_weight'] ?? 'bold') === 'bold');
-            $titleColor = $data['colors']['title'] ?? $theme['palette']['primary'] ?? '#000000';
-            $titleFont->setColor(new Color($this->hexToArgb($titleColor, $theme['palette']['primary'] ?? '#000000')));
-
-            $bulletLayout = $theme['layout']['bullets'] ?? ['x'=>40,'y'=>130,'w'=>900,'h'=>400];
-            $bulletShape = $slide->createRichTextShape();
-            $bulletShape->setWidth($bulletLayout['w']);
-            $bulletShape->setHeight($bulletLayout['h']);
-            $bulletShape->setOffsetX($bulletLayout['x']);
-            $bulletShape->setOffsetY($bulletLayout['y']);
-
-            $bullets = $data['bullets'] ?? [];
-            if (is_string($bullets)) {
-                $bullets = preg_split("/\r?\n/", $bullets);
-            }
-            $bullets = array_values(array_filter(array_map(function ($bullet) {
-                return is_string($bullet) ? $this->sanitize($bullet) : null;
-            }, is_array($bullets) ? $bullets : []), function ($bullet) {
-                return $bullet !== null && $bullet !== '';
-            }));
-            $bullets = array_slice($bullets, 0, 6);
-
-            foreach ($bullets as $bullet) {
-                $paragraph = $bulletShape->createParagraph();
-                $paragraph->setBulletStyle(new Bullet());
-                $paragraph->getAlignment()->setMarginLeft($bulletLayout['indent'] ?? 0);
-                if ($ls = $bulletLayout['line_spacing'] ?? null) {
-                    $paragraph->getAlignment()->setLineSpacing((int) ($ls * 100));
-                }
-                $run = $paragraph->createTextRun($bullet);
-                $font = $run->getFont();
-                if ($family = $theme['font']['family'] ?? null) {
-                    $font->setName($family);
-                }
-                $font->setSize($theme['font']['body_size'] ?? 18);
-                $font->setBold(($theme['font']['body_weight'] ?? 'normal') === 'bold');
-                $color = $data['colors']['bullets'] ?? $theme['palette']['secondary'] ?? '#000000';
-                $font->setColor(new Color($this->hexToArgb($color, $theme['palette']['secondary'] ?? '#000000')));
-            }
-
-            $notes = $data['notes'] ?? null;
-            if ($notes) {
-                $lines = is_array($notes) ? $notes : preg_split("/\r?\n/", $notes);
-                $noteShape = $slide->getNote()->createRichTextShape();
-                foreach ($lines as $line) {
-                    $text = is_string($line) ? $this->sanitize($line) : null;
-                    if ($text === null || $text === '') {
-                        continue;
-                    }
-                    $noteShape->createTextRun($text);
-                    $noteShape->createBreak();
-                }
-            }
+            $layout = strtolower($s['layout'] ?? 'title-bullets');
+            match ($layout) {
+                'cover'         => $this->renderCover($slide, $s, $theme, $titleColor, $accentColor),
+                'image-right'   => $this->renderImageText($slide, $s, $theme, $titleColor, $bulletsCol, 'right'),
+                'image-left'    => $this->renderImageText($slide, $s, $theme, $titleColor, $bulletsCol, 'left'),
+                'two-column'    => $this->renderTwoColumn($slide, $s, $theme, $titleColor, $bulletsCol),
+                'quote'         => $this->renderQuote($slide, $s, $theme, $titleColor, $accentColor),
+                'stat'          => $this->renderStat($slide, $s, $theme, $titleColor, $accentColor),
+                'section-break' => $this->renderSectionBreak($slide, $s, $theme, $titleColor, $accentColor),
+                default         => $this->renderTitleBullets($slide, $s, $theme, $titleColor, $bulletsCol),
+            };
         }
 
-        foreach ($this->tempFiles as $tmp) {
-            @unlink($tmp);
-        }
+        foreach ($this->tempFiles as $tmp) @unlink($tmp);
 
         $disk = 'private';
         $path = 'slides/' . Str::uuid() . '.pptx';
@@ -127,57 +69,163 @@ class PptxExporter
         $writer = IOFactory::createWriter($presentation, 'PowerPoint2007');
         $writer->save(Storage::disk($disk)->path($path));
 
-        $version->update([
-            'file_disk' => $disk,
-            'file_path' => $path,
-        ]);
+        $version->update(['file_disk' => $disk, 'file_path' => $path]);
     }
 
-    private function sanitize(string $text): string
+    private function parsePayload($raw): array
     {
-        return trim(strip_tags($text));
-    }
-
-    private function hexToArgb(string $hex, string $fallback = '#111827'): string
-    {
-        $hex = ltrim($hex, '#');
-        if (!preg_match('/^[0-9a-fA-F]{6}$/', $hex)) {
-            $hex = ltrim($fallback, '#');
-            if (!preg_match('/^[0-9a-fA-F]{6}$/', $hex)) {
-                $hex = '111827';
-            }
+        if (isset($raw['content']) && is_string($raw['content'])) {
+            $decoded = json_decode($raw['content'], true);
+            return is_array($decoded) ? $decoded : [];
         }
-        return 'FF' . strtoupper($hex);
+        return is_array($raw) ? $raw : [];
     }
 
-    private function slideSize(PhpPresentation $presentation): array
+    private function normalizeBullets(array $bullets): array
     {
-        try {
-            $layout = $presentation->getLayout();
-            if (method_exists($layout, 'getCX') && method_exists($layout, 'getCY')) {
-                return [$layout->getCX(), $layout->getCY()];
-            }
-        } catch (\Throwable $e) {
+        return array_values(array_filter(array_map(function ($b) {
+            return is_string($b) ? trim(strip_tags($b)) : null;
+        }, $bullets)));
+    }
+
+    /* Layout renderers */
+    private function renderCover($slide, array $s, array $theme, string $titleColor, string $accent): void
+    {
+        $this->titleShape($slide, $s['title'] ?? 'Title', $theme['layout']['title'] ?? ['x'=>80,'y'=>120,'w'=>800,'h'=>120], $theme, $titleColor, 56);
+
+        if (!empty($s['subtitle'])) {
+            $rt = $slide->createRichTextShape();
+            $rt->setOffsetX(80)->setOffsetY(260)->setWidth(800)->setHeight(80);
+            $rt->getActiveParagraph()->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+            $run = $rt->createTextRun($s['subtitle']);
+            $run->getFont()->setSize(26)->setColor(new Color($this->hexToArgb($accent)));
         }
-        return [960, 540];
+        $this->accentBar($slide, $theme, $accent);
     }
 
-    private function createGradientLayer(\PhpOffice\PhpPresentation\Slide $slide, string $from, string $to): void
+    private function renderTitleBullets($slide, array $s, array $theme, string $titleColor, string $bulletsCol): void
     {
-        $presentation = $slide->getParent();
-        [$width, $height] = $this->slideSize($presentation);
-        $shape = new Drawing\Shape();
-        $shape->setWidth($width);
-        $shape->setHeight($height);
-        $shape->setOffsetX(0);
-        $shape->setOffsetY(0);
-        $shape->getFill()->setFillType(Fill::FILL_GRADIENT_LINEAR);
-        $shape->getFill()->setStartColor(new Color($this->hexToArgb($from)));
-        $shape->getFill()->setEndColor(new Color($this->hexToArgb($to)));
-        $slide->addShape($shape);
+        $this->titleShape($slide, $s['title'] ?? 'Slide', $theme['layout']['title'], $theme, $titleColor);
+        $this->bulletsShape($slide, $this->normalizeBullets($s['bullets'] ?? []), $theme['layout']['bullets'], $bulletsCol);
     }
 
-    private function applyBackground($slide, ?array $bg = null, ?array $theme = null): void
+    private function renderImageText($slide, array $s, array $theme, string $titleColor, string $bulletsCol, string $pos): void
+    {
+        $this->titleShape($slide, $s['title'] ?? 'Slide', $theme['layout']['title'], $theme, $titleColor);
+        $area = $theme['layout']['bullets'];
+        $imgW = (int) round($area['w'] * 0.40);
+        $txtW = $area['w'] - $imgW - 20;
+
+        $imgX = ($pos === 'right') ? ($area['x'] + $txtW + 20) : $area['x'];
+        $txtX = ($pos === 'right') ? $area['x'] : ($area['x'] + $imgW + 20);
+
+        $this->bulletsShape($slide, $this->normalizeBullets($s['bullets'] ?? []), $this->mergeLayout($area, ['x'=>$txtX,'w'=>$txtW]), $bulletsCol);
+
+        if (!empty($s['image_url']) && ($path = $this->downloadToTmp($s['image_url']))) {
+            $pic = new DrawingFile();
+            $pic->setPath($path)->setOffsetX($imgX)->setOffsetY($area['y'])->setWidth($imgW);
+            $slide->addShape($pic);
+            $this->tempFiles[] = $path;
+        }
+    }
+
+    private function renderTwoColumn($slide, array $s, array $theme, string $titleColor, string $bulletsCol): void
+    {
+        $this->titleShape($slide, $s['title'] ?? 'Overview', $theme['layout']['title'], $theme, $titleColor);
+        $area = $theme['layout']['bullets'];
+        $colW = (int)floor(($area['w'] - 20) / 2);
+
+        $this->bulletsShape($slide, $this->normalizeBullets($s['col1'] ?? []), $this->mergeLayout($area, ['x'=>$area['x'],'w'=>$colW]), $bulletsCol);
+        $this->bulletsShape($slide, $this->normalizeBullets($s['col2'] ?? []), $this->mergeLayout($area, ['x'=>$area['x'] + $colW + 20,'w'=>$colW]), $bulletsCol);
+    }
+
+    private function renderQuote($slide, array $s, array $theme, string $titleColor, string $accent): void
+    {
+        $quote  = $s['quote'] ?? ($s['title'] ?? 'Quote');
+        $author = $s['author'] ?? null;
+
+        $rt = $slide->createRichTextShape();
+        $rt->setOffsetX(80)->setOffsetY(150)->setWidth(800)->setHeight(320);
+        $rt->getActiveParagraph()->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+        $run = $rt->createTextRun('“'.$quote.'”');
+        $run->getFont()->setSize(40)->setColor(new Color($this->hexToArgb($titleColor)));
+
+        if ($author) {
+            $rt->createBreak();
+            $run2 = $rt->createTextRun('— '.$author);
+            $run2->getFont()->setSize(20)->setColor(new Color($this->hexToArgb($accent)));
+        }
+        $this->accentBar($slide, $theme, $accent);
+    }
+
+    private function renderStat($slide, array $s, array $theme, string $titleColor, string $accent): void
+    {
+        $value = $s['stat_value'] ?? ($s['title'] ?? '42%');
+        $desc  = $s['subtitle'] ?? null;
+
+        $rt = $slide->createRichTextShape();
+        $rt->setOffsetX(100)->setOffsetY(150)->setWidth(760)->setHeight(280);
+        $rt->getActiveParagraph()->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $run = $rt->createTextRun($value);
+        $run->getFont()->setSize(72)->setBold(true)->setColor(new Color($this->hexToArgb($titleColor)));
+
+        if ($desc) {
+            $rt->createBreak();
+            $r2 = $rt->createTextRun($desc);
+            $r2->getFont()->setSize(24)->setColor(new Color($this->hexToArgb($accent)));
+        }
+        $this->accentBar($slide, $theme, $accent);
+    }
+
+    private function renderSectionBreak($slide, array $s, array $theme, string $titleColor, string $accent): void
+    {
+        $this->titleShape($slide, $s['title'] ?? 'Section', ['x'=>120,'y'=>200,'w'=>720,'h'=>120,'align'=>'center'], $theme, $titleColor, 48);
+        $this->accentBar($slide, $theme, $accent);
+    }
+
+    /* Shape primitives */
+    private function titleShape($slide, string $title, array $layout, array $theme, string $color, int $sizeOverride = null): void
+    {
+        $rt = $slide->createRichTextShape();
+        $rt->setWidth($layout['w'])->setHeight($layout['h'])->setOffsetX($layout['x'])->setOffsetY($layout['y']);
+        $ha = match($layout['align'] ?? 'left') {
+            'center' => Alignment::HORIZONTAL_CENTER,
+            'right'  => Alignment::HORIZONTAL_RIGHT,
+            default  => Alignment::HORIZONTAL_LEFT
+        };
+        $rt->getActiveParagraph()->getAlignment()->setHorizontal($ha);
+
+        $run = $rt->createTextRun($title);
+        $run->getFont()->setSize($sizeOverride ?? ($theme['font']['title_size'] ?? 44))->setBold(true)->setColor(new Color($this->hexToArgb($color)));
+    }
+
+    private function bulletsShape($slide, array $bullets, array $layout, string $color): void
+    {
+        $rt = $slide->createRichTextShape();
+        $rt->setWidth($layout['w'])->setHeight($layout['h'])->setOffsetX($layout['x'])->setOffsetY($layout['y']);
+        $indent = (int)($layout['indent'] ?? 10);
+        $size   = (int)($layout['size'] ?? 22);
+
+        foreach (array_slice($bullets, 0, 6) as $b) {
+            $p = $rt->createParagraph();
+            $p->setBulletStyle(new Bullet());
+            if (method_exists($p, 'setIndent')) $p->setIndent($indent);
+            $r = $p->createTextRun($b);
+            $r->getFont()->setSize($size)->setColor(new Color($this->hexToArgb($color)));
+        }
+    }
+
+    private function accentBar($slide, array $theme, string $accent): void
+    {
+        $layout = $theme['layout']['title'];
+        $bar = new RichText();
+        $bar->setOffsetX($layout['x'])->setOffsetY($layout['y'] + $layout['h'] + 8)->setWidth(min(220, $layout['w']))->setHeight(6);
+        $bar->getFill()->setFillType(Fill::FILL_SOLID)->setStartColor(new Color($this->hexToArgb($accent)));
+        $slide->addShape($bar);
+    }
+
+    /* Background */
+    private function applyBackground($slide, ?array $bg, ?array $theme): void
     {
         $bg = $bg ?? [];
         $type = $bg['type'] ?? 'solid';
@@ -198,26 +246,42 @@ class PptxExporter
             return;
         }
 
-        $color = $bg['color'] ?? ($theme['background_default']['color'] ?? '#FFFFFF');
+        $color = $bg['color'] ?? ($theme['background_default']['color'] ?? '#0B1220');
         $background = new BgColor();
-        $background->setColor(new Color($this->hexToArgb($color, $theme['background_default']['color'] ?? '#FFFFFF')));
+        $background->setColor(new Color($this->hexToArgb($color)));
         $slide->setBackground($background);
+    }
+
+    private function createGradientLayer($slide, string $from, string $to): void
+    {
+        $rect = new RichText();
+        $rect->setWidth(960)->setHeight(540)->setOffsetX(0)->setOffsetY(0);
+        $rect->getFill()->setFillType(Fill::FILL_GRADIENT_LINEAR)->setStartColor(new Color($this->hexToArgb($from)))->setEndColor(new Color($this->hexToArgb($to)));
+        $slide->addShape($rect);
+    }
+
+    private function mergeLayout(array $base, array $override): array
+    {
+        return array_merge($base, $override);
+    }
+
+    private function hexToArgb(string $hex): string
+    {
+        $hex = ltrim($hex, '#');
+        return 'FF' . strtoupper($hex);
     }
 
     private function downloadToTmp(string $url): ?string
     {
         try {
-            $response = Http::timeout(10)->get($url);
-            if ($response->successful()) {
+            $res = Http::timeout(10)->get($url);
+            if ($res->successful()) {
                 $path = storage_path('app/tmp/' . Str::uuid()->toString());
-                if (!is_dir(dirname($path))) {
-                    mkdir(dirname($path), 0777, true);
-                }
-                file_put_contents($path, $response->body());
+                if (!is_dir(dirname($path))) mkdir(dirname($path), 0777, true);
+                file_put_contents($path, $res->body());
                 return $path;
             }
-        } catch (\Throwable $e) {
-        }
+        } catch (\Throwable $e) {}
         return null;
     }
 }
