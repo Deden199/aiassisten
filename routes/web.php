@@ -49,6 +49,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('tasks.fallback');
 
     // Versions
+    Route::get('/versions/{version}/preview', [TaskController::class, 'preview'])->name('versions.preview');
     Route::get('/versions/{version}/download', [TaskController::class, 'download'])->name('versions.download');
 
     // Billing

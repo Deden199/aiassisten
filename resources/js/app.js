@@ -10,6 +10,17 @@ document.addEventListener('alpine:init', () => {
         autoReloadOnDone: true,
         toast: { show: false, msg: '', type: 'info' },
         debug: false,
+        previewUrl: null,
+        previewOpen: false,
+
+        showPreview(url) {
+            this.previewUrl = url;
+            this.previewOpen = true;
+        },
+        closePreview() {
+            this.previewOpen = false;
+            this.previewUrl = null;
+        },
 
         run(projectId, type, action, projectTitle = null) {
             if (!action || typeof action !== 'string') {
