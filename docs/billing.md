@@ -1,18 +1,21 @@
-# Billing Configuration
+# Billing Setup
 
-The application supports subscriptions through Stripe or PayPal.
+## Environment Variables
 
-## Stripe
-1. Set the following environment variables in `.env`:
-   - `STRIPE_SECRET`
-   - `STRIPE_WEBHOOK_SECRET`
-2. In the Stripe dashboard, create a webhook endpoint pointing to `/webhooks/stripe` and subscribe to subscription events.
+Set the following variables in your `.env`:
 
-## PayPal
-1. Set the following environment variables in `.env`:
-   - `PAYPAL_CLIENT_ID`
-   - `PAYPAL_SECRET`
-   - `PAYPAL_WEBHOOK_ID`
-2. In the PayPal dashboard, create a webhook pointing to `/webhooks/paypal` and enable subscription events.
+```
+STRIPE_SECRET=
+STRIPE_WEBHOOK_SECRET=
+PAYPAL_CLIENT_ID=
+PAYPAL_SECRET=
+PAYPAL_WEBHOOK_ID=
+BILLING_SUCCESS_URL="https://your.app/billing/return"
+BILLING_CANCEL_URL="https://your.app/billing/return?cancel=1"
+```
 
-After configuring the credentials and webhooks, tenants can purchase plans through the billing page.
+## Webhook Configuration
+
+- **Stripe:** configure a webhook endpoint at `https://your.app/webhooks/stripe` and send subscription and invoice events.
+- **PayPal:** configure `https://your.app/webhooks/paypal` with the webhook ID stored in `PAYPAL_WEBHOOK_ID`.
+
