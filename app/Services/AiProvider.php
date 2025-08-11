@@ -37,6 +37,8 @@ class AiProvider
             $text = (string) Storage::disk($project->source_disk)->get($project->source_path);
         }
 
+        $text = mb_convert_encoding($text ?? '', 'UTF-8', 'UTF-8');
+
         $prompt = "Using locale {$locale}, generate a {$type} in JSON for the following text:\n\n{$text}";
 
         if ($this->provider === 'anthropic' && !env('ANTHROPIC_API_KEY')) {
