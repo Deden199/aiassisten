@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\SubscriptionController;
 use App\Http\Controllers\Admin\LicenseController;
+use App\Http\Controllers\Admin\SlideTemplateController;
 
 Route::middleware(['auth', 'admin'])
     ->prefix('admin')
@@ -18,5 +19,7 @@ Route::middleware(['auth', 'admin'])
         Route::resource('plans', PlanController::class)->only(['index']);
         Route::resource('subscriptions', SubscriptionController::class)->only(['index']);
         Route::resource('licenses', LicenseController::class)->only(['index', 'update']);
+        Route::post('slide-templates/{slide_template}/duplicate', [SlideTemplateController::class, 'duplicate'])->name('slide-templates.duplicate');
+        Route::resource('slide-templates', SlideTemplateController::class);
     });
 require __DIR__.'/auth.php';

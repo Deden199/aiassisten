@@ -20,6 +20,7 @@ class AiProject extends Model
         'source_text',
         'language',
         'status',
+        'slide_template_id',
         'error_message',
     ];
 
@@ -43,5 +44,10 @@ class AiProject extends Model
     public function tasks()
     {
         return $this->hasMany(AiTask::class, 'project_id');
+    }
+
+    public function slideTemplate()
+    {
+        return $this->belongsTo(SlideTemplate::class, 'slide_template_id');
     }
 }

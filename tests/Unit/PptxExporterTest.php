@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Models\{AiProject, AiTask, AiTaskVersion, Tenant, User};
+use App\Models\{AiProject, AiTask, AiTaskVersion, Tenant, User, SlideTemplate};
 use App\Services\PptxExporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -57,10 +57,13 @@ class PptxExporterTest extends TestCase
             'task_id' => $task->id,
             'locale'  => 'en',
             'payload' => [
-                [
-                    'title'   => 'Intro',
-                    'bullets' => ['One', 'Two'],
-                    'notes'   => 'Note one',
+                'theme' => SlideTemplate::defaultTheme(),
+                'slides' => [
+                    [
+                        'title'   => 'Intro',
+                        'bullets' => ['One', 'Two'],
+                        'notes'   => 'Note one',
+                    ],
                 ],
             ],
         ]);
@@ -116,10 +119,13 @@ class PptxExporterTest extends TestCase
             'task_id' => $task->id,
             'locale'  => 'en',
             'payload' => [
-                [
-                    'title'   => ' <h1>Intro</h1> ',
-                    'bullets' => [' <b>One</b> ', null, '', 123, 'Two ', '<script>alert("x")</script>', '   '],
-                    'notes'   => ['<i>Note</i> ', null],
+                'theme' => SlideTemplate::defaultTheme(),
+                'slides' => [
+                    [
+                        'title'   => ' <h1>Intro</h1> ',
+                        'bullets' => [' <b>One</b> ', null, '', 123, 'Two ', '<script>alert("x")</script>', '   '],
+                        'notes'   => ['<i>Note</i> ', null],
+                    ],
                 ],
             ],
         ]);
@@ -131,13 +137,14 @@ class PptxExporterTest extends TestCase
         $path = Storage::disk('private')->path($version->file_path);
         $presentation = IOFactory::load($path);
         $slide = $presentation->getSlide(0);
-        $shape = $slide->getShapeCollection()[0];
         $texts = [];
-        foreach ($shape->getParagraphs() as $paragraph) {
-            foreach ($paragraph->getRichTextElements() as $element) {
-                $text = $element->getText();
-                if (trim($text) !== '') {
-                    $texts[] = $text;
+        foreach ($slide->getShapeCollection() as $shape) {
+            foreach ($shape->getParagraphs() as $paragraph) {
+                foreach ($paragraph->getRichTextElements() as $element) {
+                    $text = $element->getText();
+                    if (trim($text) !== '') {
+                        $texts[] = $text;
+                    }
                 }
             }
         }

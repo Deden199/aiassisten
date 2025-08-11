@@ -39,7 +39,39 @@ class AiProvider
 
         $text = mb_convert_encoding($text ?? '', 'UTF-8', 'UTF-8');
 
-        $prompt = "Using locale {$locale}, generate a {$type} in JSON for the following text:\n\n{$text}";
+        if ($type === 'slides') {
+            $template = $project->slideTemplate ? $project->slideTemplate->toArray() : \App\Models\SlideTemplate::defaultTheme();
+            $theme = [
+                'palette' => $template['palette'] ?? [],
+                'font' => $template['font'] ?? [],
+                'layout' => $template['layout'] ?? [],
+                'background_default' => $template['background_default'] ?? [],
+                'rules' => $template['rules'] ?? [],
+            ];
+            $slidesMin = $theme['rules']['slides_min'] ?? 5;
+            $slidesMax = $theme['rules']['slides_max'] ?? 10;
+            $requireBullets = $theme['rules']['require_bullets'] ?? true;
+            $themeJson = json_encode([
+                'theme' => [
+                    'palette' => $theme['palette'],
+                    'font' => $theme['font'],
+                    'layout' => $theme['layout'],
+                    'background_default' => $theme['background_default'],
+                ]
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+            $prompt = "Gunakan theme dari template berikut (override default): {$themeJson}.\n";
+            $prompt .= "Buat {$slidesMin}-{$slidesMax} slides.\n";
+            if ($requireBullets) {
+                $prompt .= "Setiap slide WAJIB 3-6 bullets.\n";
+            }
+            $prompt .= "Gunakan background default jika slide tidak mendefinisikan background.\n";
+            $prompt .= "Output JSON VALID SAJA (tanpa teks lain).\n";
+            $prompt .= "Bahasa sesuai {$locale}.\n";
+            $prompt .= "Sumber: {$text}";
+        } else {
+            $prompt = "Using locale {$locale}, generate a {$type} in JSON for the following text:\n\n{$text}";
+        }
 
         if ($this->provider === 'anthropic' && !env('ANTHROPIC_API_KEY')) {
             return [
@@ -66,13 +98,16 @@ class AiProvider
                 $response = Http::withHeaders([
                     'x-api-key'       => env('ANTHROPIC_API_KEY'),
                     'anthropic-version' => '2023-06-01',
-                ])->post(self::ANTHROPIC_ENDPOINT, [
-                    'model'     => $this->model,
-                    'max_tokens' => 1024,
-                    'messages'  => [
-                        ['role' => 'user', 'content' => $prompt],
-                    ],
-                ]);
+                ])->connectTimeout((int) env('AI_CONNECT_TIMEOUT', 30))
+                    ->timeout((int) env('AI_HTTP_TIMEOUT', 300))
+                    ->retry((int) env('AI_HTTP_RETRY', 2), (int) env('AI_HTTP_RETRY_MS', 1500))
+                    ->post(self::ANTHROPIC_ENDPOINT, [
+                        'model'     => $this->model,
+                        'max_tokens' => 1024,
+                        'messages'  => [
+                            ['role' => 'user', 'content' => $prompt],
+                        ],
+                    ]);
             } else {
                 $response = Http::withToken(env('OPENAI_API_KEY'))
                     ->connectTimeout((int) env('AI_CONNECT_TIMEOUT', 30))

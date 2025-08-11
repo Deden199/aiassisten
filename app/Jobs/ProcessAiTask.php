@@ -71,6 +71,8 @@ class ProcessAiTask implements ShouldQueue
 
         if ($this->task->type === 'slides') {
             $slides = [];
+            $theme = $project->slideTemplate ? $project->slideTemplate->toArray() : \App\Models\SlideTemplate::defaultTheme();
+            $requireBullets = data_get($theme, 'rules.require_bullets', true);
 
             foreach ($chunks as $chunk) {
                 $result = $provider->generate($project, $this->task->type, $this->locale, $chunk);
@@ -95,17 +97,26 @@ class ProcessAiTask implements ShouldQueue
                     }
                 }
 
-                $slidesData = $decoded['slides'] ?? (is_array($decoded) ? $decoded : []);
+                if (isset($decoded['theme']) && is_array($decoded['theme'])) {
+                    $theme = array_replace_recursive($theme, $decoded['theme']);
+                }
+
+                $slidesData = $decoded['slides'] ?? [];
                 foreach ($slidesData as $s) {
                     $bullets = $s['bullets'] ?? $s['bullet_points'] ?? [];
                     if (is_string($bullets)) {
                         $bullets = array_values(array_filter(array_map('trim', preg_split('/\r?\n/', $bullets))));
                     }
+                    if ($requireBullets && (!is_array($bullets) || count(array_filter($bullets)) === 0)) {
+                        $bullets = $this->fallbackBullets($chunk);
+                    }
 
                     $slides[] = [
                         'title'   => $s['title'] ?? '',
-                        'bullets' => is_array($bullets) ? array_values($bullets) : [],
+                        'bullets' => is_array($bullets) ? array_values(array_filter($bullets)) : [],
                         'notes'   => $s['notes'] ?? $s['speaker_notes'] ?? null,
+                        'background' => $s['background'] ?? null,
+                        'colors' => $s['colors'] ?? [],
                     ];
                 }
 
@@ -115,7 +126,7 @@ class ProcessAiTask implements ShouldQueue
             }
 
             $this->task->update([
-                'status'        => 'done', // <— konsisten dengan UI (queued|running|done|failed)
+                'status'        => 'done',
                 'message'       => 'Generated via provider.',
                 'input_tokens'  => $inputTokens,
                 'output_tokens' => $outputTokens,
@@ -126,7 +137,10 @@ class ProcessAiTask implements ShouldQueue
                 'id'      => (string) Str::uuid(),
                 'task_id' => $this->task->id,
                 'locale'  => $this->locale,
-                'payload' => $slides,
+                'payload' => [
+                    'theme' => $theme,
+                    'slides' => $slides,
+                ],
             ]);
 
             UsageLog::create([
@@ -238,11 +252,10 @@ class ProcessAiTask implements ShouldQueue
         }
     }
 
-    public function failed(Throwable $e): void
+    private function fallbackBullets(string $text): array
     {
-        $this->task->update([
-            'status'  => 'failed',
-            'message' => $e->getMessage(),
-        ]);
+        $sentences = preg_split('/[\.!?]\s+/', strip_tags($text));
+        $sentences = array_values(array_filter(array_map('trim', $sentences)));
+        return array_slice($sentences, 0, 6);
     }
 }
