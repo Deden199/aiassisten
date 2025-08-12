@@ -53,10 +53,11 @@ class InstallCommand extends Command
         $purchaseCode = $this->ask('Purchase code');
         $defaultDomain = parse_url(config('app.url'), PHP_URL_HOST) ?? config('app.url');
         $domain = $this->ask('Licensed domain', $defaultDomain);
+
         License::create([
             'tenant_id' => $tenant->id,
-            'purchase_code' => $purchaseCode,
-            'domain' => $domain,
+            'purchase_code' => hash('sha256', $purchaseCode),
+            'domain' => hash('sha256', $domain),
             'activated_at' => now(),
             'status' => 'valid',
         ]);
