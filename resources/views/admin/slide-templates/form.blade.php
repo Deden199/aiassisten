@@ -7,17 +7,30 @@
 @section('content')
 <div class="py-6">
   <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
-    <div class="bg-white p-6 shadow-sm rounded-lg">
+    <div class="bg-white p-6 shadow-sm rounded-lg" x-data='@json([
+          "palette" => [
+              "background" => old("palette.background", data_get($template,'palette.background','#000000')),
+              "primary" => old("palette.primary", data_get($template,'palette.primary','#000000')),
+              "secondary" => old("palette.secondary", data_get($template,'palette.secondary','#000000')),
+              "accent" => old("palette.accent", data_get($template,'palette.accent','#000000')),
+          ],
+          "bg" => [
+              "type" => old("background_default.type", data_get($template,'background_default.type','solid')),
+              "color" => old("background_default.color", data_get($template,'background_default.color','#ffffff')),
+              "from" => old("background_default.gradient.from", data_get($template,'background_default.gradient.from','#ffffff')),
+              "to" => old("background_default.gradient.to", data_get($template,'background_default.gradient.to','#ffffff')),
+          ]
+      ])'>
       <form method="POST" action="{{ $template->exists ? route('admin.slide-templates.update',$template) : route('admin.slide-templates.store') }}">
         @csrf
         @if($template->exists) @method('PUT') @endif
         <div class="grid gap-4">
           <input type="text" name="name" value="{{ old('name',$template->name) }}" placeholder="Name" class="border rounded px-3 py-2" required>
           <div class="grid grid-cols-2 gap-2">
-            <input type="text" name="palette[background]" value="{{ old('palette.background',data_get($template,'palette.background','#000000')) }}" placeholder="#background" class="border rounded px-3 py-2" required>
-            <input type="text" name="palette[primary]" value="{{ old('palette.primary',data_get($template,'palette.primary','#000000')) }}" placeholder="#primary" class="border rounded px-3 py-2" required>
-            <input type="text" name="palette[secondary]" value="{{ old('palette.secondary',data_get($template,'palette.secondary','#000000')) }}" placeholder="#secondary" class="border rounded px-3 py-2" required>
-            <input type="text" name="palette[accent]" value="{{ old('palette.accent',data_get($template,'palette.accent','#000000')) }}" placeholder="#accent" class="border rounded px-3 py-2" required>
+            <input type="color" name="palette[background]" x-model="palette.background" value="{{ old('palette.background',data_get($template,'palette.background','#000000')) }}" class="border rounded px-3 py-2" required>
+            <input type="color" name="palette[primary]" x-model="palette.primary" value="{{ old('palette.primary',data_get($template,'palette.primary','#000000')) }}" class="border rounded px-3 py-2" required>
+            <input type="color" name="palette[secondary]" x-model="palette.secondary" value="{{ old('palette.secondary',data_get($template,'palette.secondary','#000000')) }}" class="border rounded px-3 py-2" required>
+            <input type="color" name="palette[accent]" x-model="palette.accent" value="{{ old('palette.accent',data_get($template,'palette.accent','#000000')) }}" class="border rounded px-3 py-2" required>
           </div>
           <div class="grid grid-cols-2 gap-2">
             <input type="text" name="font[family]" value="{{ old('font.family',data_get($template,'font.family')) }}" placeholder="Font family" class="border rounded px-3 py-2">
@@ -52,15 +65,26 @@
             <input type="number" name="layout[bullets][indent]" value="{{ old('layout.bullets.indent',data_get($template,'layout.bullets.indent')) }}" placeholder="indent" class="border rounded px-3 py-2">
           </div>
           <div class="grid gap-2">
-            <select name="background_default[type]" class="border rounded px-3 py-2">
+            <select name="background_default[type]" x-model="bg.type" class="border rounded px-3 py-2">
               <option value="solid" @selected(old('background_default.type',data_get($template,'background_default.type'))=='solid')>solid</option>
               <option value="gradient" @selected(old('background_default.type',data_get($template,'background_default.type'))=='gradient')>gradient</option>
               <option value="image" @selected(old('background_default.type',data_get($template,'background_default.type'))=='image')>image</option>
             </select>
-            <input type="text" name="background_default[color]" value="{{ old('background_default.color',data_get($template,'background_default.color')) }}" placeholder="bg color" class="border rounded px-3 py-2">
-            <input type="text" name="background_default[gradient][from]" value="{{ old('background_default.gradient.from',data_get($template,'background_default.gradient.from')) }}" placeholder="gradient from" class="border rounded px-3 py-2">
-            <input type="text" name="background_default[gradient][to]" value="{{ old('background_default.gradient.to',data_get($template,'background_default.gradient.to')) }}" placeholder="gradient to" class="border rounded px-3 py-2">
+            <input type="color" name="background_default[color]" x-model="bg.color" value="{{ old('background_default.color',data_get($template,'background_default.color')) }}" class="border rounded px-3 py-2">
+            <input type="color" name="background_default[gradient][from]" x-model="bg.from" value="{{ old('background_default.gradient.from',data_get($template,'background_default.gradient.from')) }}" class="border rounded px-3 py-2">
+            <input type="color" name="background_default[gradient][to]" x-model="bg.to" value="{{ old('background_default.gradient.to',data_get($template,'background_default.gradient.to')) }}" class="border rounded px-3 py-2">
             <input type="url" name="background_default[image_url]" value="{{ old('background_default.image_url',data_get($template,'background_default.image_url')) }}" placeholder="image url" class="border rounded px-3 py-2">
+          </div>
+          <div class="mt-4">
+            <h3 class="font-medium mb-2">Preview</h3>
+            <div class="w-full h-48 border rounded relative" x-bind:style="bg.type==='gradient' ? `background:linear-gradient(to bottom right, ${bg.from}, ${bg.to})` : `background:${bg.color}`">
+              <h4 class="p-4 text-2xl font-bold" x-bind:style="`color:${palette.primary}`">Title</h4>
+              <ul class="px-8" x-bind:style="`color:${palette.secondary}`">
+                <li>First point</li>
+                <li>Second point</li>
+              </ul>
+              <div class="absolute bottom-0 left-0 w-full h-2" x-bind:style="`background:${palette.accent}`"></div>
+            </div>
           </div>
           <div class="grid grid-cols-2 gap-2">
             <input type="number" name="rules[slides_min]" value="{{ old('rules.slides_min',data_get($template,'rules.slides_min',5)) }}" placeholder="slides min" class="border rounded px-3 py-2" required>

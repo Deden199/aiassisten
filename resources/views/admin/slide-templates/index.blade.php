@@ -18,13 +18,24 @@
         <thead class="bg-gray-50">
           <tr>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preview</th>
             <th class="px-6 py-3"></th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
           @foreach($templates as $tpl)
+          @php
+            $bg = data_get($tpl,'background_default.type') === 'gradient'
+                ? 'linear-gradient(to bottom right, '.data_get($tpl,'background_default.gradient.from','#ffffff').', '.data_get($tpl,'background_default.gradient.to','#ffffff').')'
+                : data_get($tpl,'background_default.color', data_get($tpl,'palette.background','#ffffff'));
+          @endphp
           <tr>
             <td class="px-6 py-4">{{ $tpl->name }}</td>
+            <td class="px-6 py-4">
+              <div class="w-24 h-16 rounded border overflow-hidden" style="background: {{ $bg }}">
+                <div class="h-2 w-full" style="background: {{ data_get($tpl,'palette.accent','#000000') }}"></div>
+              </div>
+            </td>
             <td class="px-6 py-4 text-right space-x-2">
               <form action="{{ route('admin.slide-templates.duplicate', $tpl) }}" method="POST" class="inline">@csrf<button class="px-2 py-1 border rounded">Duplicate</button></form>
               <a href="{{ route('admin.slide-templates.edit', $tpl) }}" class="px-2 py-1 border rounded">Edit</a>
