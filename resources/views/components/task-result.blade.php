@@ -11,34 +11,39 @@
     downloadUrl: null,
     openPreview: null,
     // Poll until task finishes. Consider caching trimmed payload for faster access.
-    poll() {
-        fetch(this.url)
-            .then(r => r.json())
-            .then(d => {
-                this.status = d.status;
-                this.message = d.message;
-                if (d.status === 'done') {
-                    this.versions = d.versions.map(v => {
-                        let content = v.payload?.content || '';
-                        let parsed = {};
-                        try {
-                            parsed = content ? JSON.parse(content) : {};
-                        } catch (e) {
-                            parsed = {};
-                        }
-                        return { ...v, parsed };
-                    });
-                    if (this.versions.length > 0) {
-                        this.version = this.versions[0];
-                        this.result = this.versions[0].parsed;
-                        this.openPreview = `preview-version-${this.versions[0].id}`;
+    async poll() {
+        try {
+            const r = await fetch(this.url);
+            if (!r.ok) throw new Error('Polling request failed');
+            const d = await r.json();
+            this.status = d.status;
+            this.message = d.message;
+            if (d.status === 'done') {
+                this.versions = d.versions.map(v => {
+                    let content = v.payload?.content || '';
+                    let parsed = {};
+                    try {
+                        parsed = content ? JSON.parse(content) : {};
+                    } catch (e) {
+                        parsed = {};
                     }
-                    this.downloadUrl = d.download_url;
-                    return;
+                    return { ...v, parsed };
+                });
+                if (this.versions.length > 0) {
+                    this.version = this.versions[0];
+                    this.result = this.versions[0].parsed;
+                    this.openPreview = `preview-version-${this.versions[0].id}`;
                 }
-                if (d.status === 'failed') return;
-                setTimeout(() => this.poll(), 2000);
-            });
+                this.downloadUrl = d.download_url;
+                return;
+            }
+            if (d.status === 'failed') return;
+            setTimeout(() => this.poll(), 2000);
+        } catch (e) {
+            console.error('Polling error:', e);
+            this.status = 'failed';
+            this.message = e.message;
+        }
     }
 }" x-init="poll" class="space-y-2">
     <template x-if="status === 'done' && result.summary">
@@ -110,6 +115,9 @@
             <div class="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded overflow-hidden" x-show="['queued','running'].includes(status)">
                 <div class="h-full w-1/2 bg-blue-400 dark:bg-blue-500 animate-[indeterminate_1.2s_ease_infinite]"></div>
             </div>
+            <template x-if="status === 'failed'">
+                <button class="self-start text-xs text-blue-600 dark:text-blue-400 underline" @click="poll">Retry</button>
+            </template>
         </div>
     </template>
 </div>
