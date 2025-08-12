@@ -135,13 +135,15 @@ public function createAdmin(Request $request, \App\Services\EnvatoService $envat
             ]);
         }
 
-        // License (default grace)
-        $license = \App\Models\License::create([
-            'tenant_id'    => $tenant->id,
-            'status'       => 'grace',
-            'activated_at' => now(),
-            'grace_until'  => now()->addDays((int) config('license.grace_days', 7)),
-        ]);
+$license = License::create([
+    'tenant_id'     => $tenant->id,
+    'purchase_code' => '',     // <-- placeholder, biar NOT NULL terpenuhi
+    'domain'        => '',     // <-- placeholder
+    'status'        => 'grace',
+    'activated_at'  => now(),
+    'grace_until'   => now()->addDays((int) config('license.grace_days', 7)),
+]);
+
 
         // Optional: aktivasi Envato kalau diisi
         if (!empty($data['purchase_code']) && !empty($data['domain'])) {

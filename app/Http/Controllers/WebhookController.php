@@ -4,106 +4,196 @@ namespace App\Http\Controllers;
 
 use App\Models\Subscription;
 use App\Models\Invoice;
-use Illuminate\Support\Carbon;
+use App\Models\Price;
 use Illuminate\Http\Request;
-use Stripe\Webhook;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use Stripe\StripeClient;
+use Stripe\Webhook as StripeWebhook;
 
 class WebhookController extends Controller
 {
     public function stripe(Request $request)
     {
-        $payload = $request->getContent();
+        $secret = config('services.stripe.webhook_secret');
         $sig = $request->header('Stripe-Signature');
+        $payload = $request->getContent();
 
         try {
-            $event = Webhook::constructEvent(
-                $payload,
-                $sig,
-                config('services.stripe.webhook_secret')
-            );
+            $event = StripeWebhook::constructEvent($payload, $sig, $secret);
         } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            return response()->json(['error' => 'Invalid signature'], 400);
         }
 
-        switch ($event->type) {
-            case 'customer.subscription.created':
-            case 'customer.subscription.updated':
-            case 'customer.subscription.deleted':
-                $data = $event->data->object;
-                $subscription = Subscription::firstOrNew([
-                    'tenant_id' => $data->metadata->tenant_id ?? null,
+        $stripe = new StripeClient(config('services.stripe.secret'));
+        $type = $event->type ?? '';
+
+        if ($type === 'checkout.session.completed') {
+            $session = $event->data->object;
+            if (($session->mode ?? null) === 'subscription') {
+                $subscriptionId = $session->subscription ?? null;
+                $tenantId = $session->metadata->tenant_id ?? null;
+                $planId   = $session->metadata->plan_id ?? null;
+
+                if ($subscriptionId && $tenantId) {
+                    $sub = $stripe->subscriptions->retrieve($subscriptionId);
+                    Subscription::updateOrCreate(
+                        ['tenant_id' => $tenantId],
+                        [
+                            'plan_id'      => $planId,
+                            'provider'     => 'stripe',
+                            'provider_ref' => $subscriptionId,
+                            'status'       => $sub->status ?? 'active',
+                            'started_at'   => now(),
+                            'renews_at'    => isset($sub->current_period_end) ? now()->createFromTimestamp($sub->current_period_end) : null,
+                        ]
+                    );
+                }
+            }
+        }
+
+        if ($type === 'invoice.paid' || $type === 'invoice.payment_succeeded') {
+            $inv = $event->data->object;
+            $subscriptionId = $inv->subscription ?? null;
+
+            // Coba cari tenant melalui subscription record lokal
+            $subRow = Subscription::where('provider', 'stripe')
+                ->where('provider_ref', $subscriptionId)->first();
+
+            if ($subRow) {
+                Invoice::create([
+                    'tenant_id'           => $subRow->tenant_id,
+                    'provider'            => 'stripe',
+                    'provider_invoice_id' => $inv->id ?? (string) Str::ulid(),
+                    'amount_due_cents'    => (int) (($inv->amount_due ?? 0)),
+                    'amount_paid_cents'   => (int) (($inv->amount_paid ?? 0)),
+                    'currency'            => strtoupper($inv->currency ?? 'USD'),
+                    'status'              => ($inv->paid ?? false) ? 'paid' : 'open',
+                    'paid_at'             => ($inv->paid ?? false) ? now() : null,
+                    'hosted_url'          => $inv->hosted_invoice_url ?? null,
+                    'pdf_url'             => $inv->invoice_pdf ?? null,
+                    'raw'                 => ['stripe' => $inv],
                 ]);
-                $subscription->provider = 'stripe';
-                $subscription->plan_id = $data->metadata->plan_id ?? $subscription->plan_id;
-                $subscription->provider_subscription_id = $data->id;
-                $subscription->provider_customer_id = $data->customer;
-                $subscription->status = $data->status;
-                $subscription->cancel_at_period_end = (bool) $data->cancel_at_period_end;
-                $subscription->current_period_start = Carbon::createFromTimestamp($data->current_period_start);
-                $subscription->current_period_end = Carbon::createFromTimestamp($data->current_period_end);
-                $subscription->trial_end_at = $data->trial_end ? Carbon::createFromTimestamp($data->trial_end) : null;
-                $subscription->save();
-                break;
-
-            case 'invoice.payment_succeeded':
-            case 'invoice.payment_failed':
-                $inv = $event->data->object;
-                $invoice = Invoice::updateOrCreate(
-                    ['provider' => 'stripe', 'provider_invoice_id' => $inv->id],
-                    [
-                        'tenant_id' => $inv->metadata->tenant_id ?? null,
-                        'amount_due_cents' => $inv->amount_due,
-                        'currency' => $inv->currency,
-                        'hosted_url' => $inv->hosted_invoice_url,
-                        'pdf_url' => $inv->invoice_pdf,
-                        'paid_at' => $event->type === 'invoice.payment_succeeded' ? now() : null,
-                        'raw' => $inv,
-                    ]
-                );
-                Subscription::where('provider_subscription_id', $inv->subscription)
-                    ->update(['latest_invoice_id' => $invoice->id]);
-                break;
+            }
         }
 
-        return response()->json(['status' => 'ok']);
+        if (in_array($type, ['customer.subscription.updated', 'customer.subscription.deleted'])) {
+            $sub = $event->data->object;
+            Subscription::where('provider', 'stripe')
+                ->where('provider_ref', $sub->id ?? '')
+                ->update([
+                    'status'    => $sub->status ?? null,
+                    'renews_at' => isset($sub->current_period_end) ? now()->createFromTimestamp($sub->current_period_end) : null,
+                ]);
+        }
+
+        return response()->json(['received' => true]);
     }
 
     public function paypal(Request $request)
     {
-        $event = $request->all();
-        $resource = $event['resource'] ?? [];
-        $type = $event['event_type'] ?? '';
+        $headers = [
+            'transmission_id'    => $request->header('Paypal-Transmission-Id'),
+            'transmission_time'  => $request->header('Paypal-Transmission-Time'),
+            'cert_url'           => $request->header('Paypal-Cert-Url'),
+            'auth_algo'          => $request->header('Paypal-Auth-Algo'),
+            'transmission_sig'   => $request->header('Paypal-Transmission-Sig'),
+            'webhook_id'         => config('services.paypal.webhook_id'),
+        ];
 
-        if (str_starts_with($type, 'BILLING.SUBSCRIPTION')) {
-            $subscription = Subscription::firstOrNew([
-                'tenant_id' => $resource['custom_id'] ?? null,
-            ]);
-            $subscription->provider = 'paypal';
-            $subscription->provider_subscription_id = $resource['id'] ?? $subscription->provider_subscription_id;
-            $subscription->status = match ($type) {
-                'BILLING.SUBSCRIPTION.CANCELLED' => 'canceled',
-                'BILLING.SUBSCRIPTION.SUSPENDED' => 'suspended',
-                default => 'active',
-            };
-            $subscription->current_period_start = now();
-            $subscription->current_period_end = now();
-            $subscription->save();
+        $mode = config('services.paypal.mode', 'sandbox');
+        $base = $mode === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
+
+        // Access token
+        $tokenResp = Http::asForm()
+            ->withBasicAuth(config('services.paypal.client_id'), config('services.paypal.secret'))
+            ->post($base.'/v1/oauth2/token', ['grant_type' => 'client_credentials']);
+
+        if (!$tokenResp->ok()) {
+            return response()->json(['error' => 'oauth_failed'], 400);
         }
 
-        if (in_array($type, ['PAYMENT.SALE.COMPLETED', 'PAYMENT.FAILED'])) {
-            Invoice::updateOrCreate(
-                ['provider' => 'paypal', 'provider_invoice_id' => $resource['id'] ?? ''],
-                [
-                    'tenant_id' => $resource['custom_id'] ?? null,
-                    'amount_due_cents' => (int) (($resource['amount']['value'] ?? 0) * 100),
-                    'currency' => $resource['amount']['currency_code'] ?? 'USD',
-                    'hosted_url' => $resource['links'][0]['href'] ?? null,
-                    'paid_at' => $type === 'PAYMENT.SALE.COMPLETED' ? now() : null,
-                    'raw' => $resource,
-                ]
-            );
+        $access = $tokenResp->json('access_token');
+
+        // Verify webhook signature
+        $verifyResp = Http::withToken($access)->post($base.'/v1/notifications/verify-webhook-signature', [
+            'transmission_id'   => $headers['transmission_id'],
+            'transmission_time' => $headers['transmission_time'],
+            'cert_url'          => $headers['cert_url'],
+            'auth_algo'         => $headers['auth_algo'],
+            'transmission_sig'  => $headers['transmission_sig'],
+            'webhook_id'        => $headers['webhook_id'],
+            'webhook_event'     => $request->json()->all(),
+        ]);
+
+        if (!$verifyResp->ok() || $verifyResp->json('verification_status') !== 'SUCCESS') {
+            return response()->json(['error' => 'invalid_signature'], 400);
         }
 
-        return response()->json(['status' => 'ok']);
+        $event = $request->json()->all();
+        $type  = $event['event_type'] ?? '';
+        $res   = $event['resource'] ?? [];
+
+        if ($type === 'BILLING.SUBSCRIPTION.ACTIVATED' || $type === 'BILLING.SUBSCRIPTION.UPDATED') {
+            $tenantId = $res['custom_id'] ?? null;
+            $providerRef = $res['id'] ?? null;
+            $status = strtolower($res['status'] ?? 'active'); // ACTIVE/CANCELLED
+            $planId = null;
+
+            if (!empty($res['plan_id'])) {
+                $price = Price::where('provider', 'paypal')->where('provider_price_id', $res['plan_id'])->first();
+                $planId = $price?->plan_id;
+            }
+
+            if ($tenantId && $providerRef) {
+                Subscription::updateOrCreate(
+                    ['tenant_id' => $tenantId],
+                    [
+                        'plan_id'      => $planId,
+                        'provider'     => 'paypal',
+                        'provider_ref' => $providerRef,
+                        'status'       => $status === 'active' ? 'active' : 'canceled',
+                        'started_at'   => now(),
+                        'renews_at'    => null, // PayPal period end tidak selalu dikirim di event ini
+                    ]
+                );
+            }
+        }
+
+        if ($type === 'PAYMENT.SALE.COMPLETED' || $type === 'PAYMENT.CAPTURE.COMPLETED') {
+            // Ambil subscription ID dari resource chain jika ada
+            $invoiceId = $res['id'] ?? (string) Str::ulid();
+            $amount = $res['amount']['total'] ?? ($res['amount']['value'] ?? '0.00');
+            $currency = $res['amount']['currency'] ?? ($res['amount']['currency_code'] ?? 'USD');
+
+            // Cari subscription melalui parent/links (best effort)
+            $subRow = Subscription::where('provider', 'paypal')->latest()->first(); // fallback
+            if ($subRow) {
+                Invoice::create([
+                    'tenant_id'           => $subRow->tenant_id,
+                    'provider'            => 'paypal',
+                    'provider_invoice_id' => $invoiceId,
+                    'amount_due_cents'    => (int) round((float) $amount * 100),
+                    'amount_paid_cents'   => (int) round((float) $amount * 100),
+                    'currency'            => strtoupper($currency),
+                    'status'              => 'paid',
+                    'paid_at'             => now(),
+                    'hosted_url'          => null,
+                    'pdf_url'             => null,
+                    'raw'                 => ['paypal' => $res],
+                ]);
+            }
+        }
+
+        if ($type === 'BILLING.SUBSCRIPTION.CANCELLED') {
+            $providerRef = $res['id'] ?? null;
+            if ($providerRef) {
+                Subscription::where('provider', 'paypal')
+                    ->where('provider_ref', $providerRef)
+                    ->update(['status' => 'canceled']);
+            }
+        }
+
+        return response()->json(['received' => true]);
     }
 }

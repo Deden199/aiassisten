@@ -63,11 +63,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/billing/subscribe', [BillingController::class, 'subscribe'])->name('billing.subscribe');
     Route::get('/billing/invoice/{invoice}', [BillingController::class, 'invoice'])->name('billing.invoice');
 
-    // Chatbot (throttled + license gate + cost cap + quota)
-    Route::middleware(['throttle:tasks', 'license.gate', 'cost.cap', \App\Http\Middleware\EnsureActiveSubscriptionAndQuota::class])->group(function () {
-        Route::get('/chat', [ChatController::class, 'index'])->name('chat');
-        Route::post('/chat', [ChatController::class, 'send'])->name('chat.send');
-    });
+// Chatbot: tidak dikunci lisensi/plan/kuota
+Route::middleware(['throttle:tasks'])->group(function () {
+    Route::get('/chat', [ChatController::class, 'index'])->name('chat');
+    Route::post('/chat', [ChatController::class, 'send'])->name('chat.send');
+});
+
 
     // Logout
     Route::post('/logout', function (Request $request) {
