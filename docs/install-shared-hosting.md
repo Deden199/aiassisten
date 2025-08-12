@@ -29,6 +29,8 @@
 
 After completing these steps the application should be reachable at your domain.
 
+Next, finish [License Activation](installation.md#license-activation) by setting `ENVATO_API_TOKEN` and, for development, `LICENSE_BYPASS=true` in `.env`.
+
 ## Troubleshooting
 
 - **Missing PHP extensions**: If the installer reports missing extensions, enable them via cPanel's "Select PHP Version" or contact hosting support.
