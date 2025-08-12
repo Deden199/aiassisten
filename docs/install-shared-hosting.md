@@ -1,15 +1,17 @@
 # Installing on Shared Hosting (cPanel)
 
+> Before starting, review the [installation prerequisites](installation.md) for PHP requirements and environment setup.
+
 1. **Upload files**
    - Upload the application archive to your hosting account and extract it inside the desired directory.
    - Set the `public` directory as the document root for your domain or subdomain.
 2. **Configure PHP**
-   - Ensure PHP 8.2 or higher and required extensions (OpenSSL, PDO, Mbstring, Tokenizer, Fileinfo, JSON, cURL, Zip).
+   - Ensure your account uses PHP 8.2+ with the extensions listed in the [prerequisites](installation.md).
 3. **Create database**
    - From cPanel, create a MySQL database and user, then assign privileges.
    - _Screenshot: database creation (placeholder)_
-4. **Set environment values**
-   - Copy `.env.example` to `.env` and update database credentials, `APP_URL`, mail settings, and storage driver.
+4. **Environment configuration**
+   - Complete the `.env` setup as described in the [installation prerequisites](installation.md).
    - _Screenshot: editing environment variables (placeholder)_
 5. **Run installer**
    - Visit your domain and follow the three step installer wizard to generate the app key and run migrations.
@@ -19,7 +21,6 @@
    - _Screenshot: cron job setup (placeholder)_
 7. **Create storage link**
    - Run `php artisan storage:link` or ask hosting support to create the symlink from `public/storage` to `storage/app/public`.
-
 8. **Set permissions**
    - Ensure `storage/` and `bootstrap/cache/` are writable:
      ```bash

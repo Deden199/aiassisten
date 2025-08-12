@@ -1,11 +1,13 @@
 # Installing on a VPS
 
+> Before starting, review the [installation prerequisites](installation.md) for PHP requirements and environment setup.
+
 1. **Server requirements**
-   - Ubuntu 22.04+, Docker (optional), Git, and PHP 8.2 with common extensions.
+   - Ubuntu 22.04+, Docker (optional), Git, and PHP. Ensure PHP version and extensions meet the [prerequisites](installation.md).
 2. **Clone repository**
    - `git clone <repo> && cd <repo>`
 3. **Environment configuration**
-   - Copy `.env.example` to `.env` and configure database, cache, queue (Redis), mail and `APP_URL`.
+   - Set up your `.env` file as described in the [installation prerequisites](installation.md).
 4. **Dependencies**
    - Run `composer install --optimize-autoloader` and `npm install && npm run build` if serving assets.
 5. **Database migration**
