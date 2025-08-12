@@ -247,7 +247,12 @@ EOT;
             ]);
 
         } else {
-            $prompt = "Using locale {$locale}, generate a {$type} in JSON for the following text:\n\n{$sanitizedText}";
+            if ($type === 'mindmap') {
+                $prompt = "You are a helpful assistant that extracts key ideas into a mind map. "
+                    . "Return JSON: {\"mindmap\": [\"node\", ...]}.\n\nSource:\n{$sanitizedText}";
+            } else {
+                $prompt = "Using locale {$locale}, generate a {$type} in JSON for the following text:\n\n{$sanitizedText}";
+            }
         }
 
         $cacheKey = 'ai:' . hash('sha256', $prompt);
@@ -281,6 +286,29 @@ EOT;
             ];
         }
 
+        $responseFormat = null;
+        if ($this->provider === 'openai') {
+            $responseFormat = ['type' => 'json_object'];
+            if ($type === 'mindmap') {
+                $responseFormat = [
+                    'type' => 'json_schema',
+                    'json_schema' => [
+                        'name' => 'mindmap',
+                        'schema' => [
+                            'type' => 'object',
+                            'required' => ['mindmap'],
+                            'properties' => [
+                                'mindmap' => [
+                                    'type' => 'array',
+                                    'items' => ['type' => 'string'],
+                                ],
+                            ],
+                        ],
+                    ],
+                ];
+            }
+        }
+
         try {
             if ($this->provider === 'anthropic') {
                 $response = Http::withHeaders([
@@ -303,7 +331,7 @@ EOT;
                     ->retry((int) env('AI_HTTP_RETRY', 2), (int) env('AI_HTTP_RETRY_MS', 1500))
                     ->post(self::OPENAI_ENDPOINT, [
                         'model'          => $this->model,
-                        'response_format' => ['type' => 'json_object'],
+                        'response_format' => $responseFormat,
                         'messages'       => [
                             ['role' => 'user', 'content' => $prompt],
                         ],

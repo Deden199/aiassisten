@@ -231,11 +231,32 @@ class ProcessAiTask implements ShouldQueue
             }
 
             $piece = AiProvider::extractContent($result);
+            $rawPiece = $piece;
+            $decoded = null;
 
             if (is_string($piece) && $piece !== '') {
+                $trimmed = trim($piece);
                 try {
-                    $decoded = json_decode($piece, true, 512, JSON_THROW_ON_ERROR);
+                    $decoded = json_decode($trimmed, true, 512, JSON_THROW_ON_ERROR);
+                } catch (Throwable $e) {
+                    if (preg_match('/\{.*\}/s', $trimmed, $m)) {
+                        try {
+                            $decoded = json_decode($m[0], true, 512, JSON_THROW_ON_ERROR);
+                        } catch (Throwable $e2) {
+                        }
+                    }
+                    if (!$decoded && preg_match('/\[(?:\s*"[^"]*"\s*,?)+\s*\]/s', $trimmed, $m)) {
+                        try {
+                            $arr = json_decode($m[0], true, 512, JSON_THROW_ON_ERROR);
+                            if (is_array($arr)) {
+                                $decoded = ['mindmap' => $arr];
+                            }
+                        } catch (Throwable $e3) {
+                        }
+                    }
+                }
 
+                if (is_array($decoded)) {
                     $pieceSummary = data_get($decoded, 'summary');
                     if (is_string($pieceSummary) && $pieceSummary !== '') {
                         $summaries[] = trim($pieceSummary);
@@ -249,16 +270,15 @@ class ProcessAiTask implements ShouldQueue
                             }
                         }
                     }
-                } catch (Throwable $e) {
-                    // ignore invalid json pieces
                 }
             }
 
             $payloadChunks[] = [
-                'index'   => $index,
-                'chunk'   => $chunk,
-                'content' => $piece,
-                'raw'     => $result['raw'] ?? [],
+                'index'       => $index,
+                'chunk'       => $chunk,
+                'content'     => $rawPiece,
+                'parsed'      => $decoded,
+                'raw'         => $result['raw'] ?? [],
             ];
 
             $inputTokens  += (int) ($result['input_tokens']  ?? 0);
@@ -281,6 +301,15 @@ class ProcessAiTask implements ShouldQueue
             $this->task->update([
                 'status'  => 'failed',
                 'message' => 'invalid json',
+            ]);
+            AiTaskVersion::create([
+                'id'      => (string) Str::uuid(),
+                'task_id' => $this->task->id,
+                'locale'  => $this->locale,
+                'payload' => [
+                    'content' => '',
+                    'chunks'  => $payloadChunks,
+                ],
             ]);
             return;
         }
