@@ -56,6 +56,10 @@ return [
         'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
     ],
 
+    'envato' => [
+        'token' => env('ENVATO_API_TOKEN'),
+    ],
+
     'pdftotext_binary' => env('PDFTOTEXT_BINARY', 'pdftotext'),
 
 ];
