@@ -31,6 +31,16 @@ AI Assistant is a Laravel-based platform offering AI-driven tools to streamline 
    php artisan serve
    ```
 
+## cPanel Installation
+
+For shared hosting environments using cPanel:
+
+1. Upload the release archive to your hosting account and extract it.
+2. Create a MySQL database and user in cPanel.
+3. Visit your domain to run the web-based installer.
+
+See the [shared hosting installation guide](docs/install-shared-hosting.md) for detailed steps.
+
 ## License Activation
 1. Purchase the script and obtain your Envato purchase code.
 2. Set `ENVATO_API_TOKEN` in `.env`.
