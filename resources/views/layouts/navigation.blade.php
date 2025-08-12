@@ -12,21 +12,29 @@
         </div>
 
         <!-- Navigation Links -->
-        <div class="hidden sm:flex sm:items-center sm:ms-10 gap-6">
-          <a href="{{ route('dashboard') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('dashboard') ? 'underline decoration-yellow-300' : '' }}">Dashboard</a>
-          <a href="{{ route('projects.index') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('projects.*') ? 'underline decoration-yellow-300' : '' }}">Projects</a>
-          <a href="{{ route('billing') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('billing') ? 'underline decoration-yellow-300' : '' }}">Billing</a>
-          @can('admin')
-            <a href="{{ route('admin.slide-templates.index') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('admin.slide-templates.*') ? 'underline decoration-yellow-300' : '' }}">Slide Templates</a>
-          @endcan
-              <a href="{{ route('chat') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('chat') ? 'underline decoration-yellow-300' : '' }}">Chatbot</a>
-
-        </div>
+        @auth
+          <div class="hidden sm:flex sm:items-center sm:ms-10 gap-6">
+            <a href="{{ route('dashboard') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('dashboard') ? 'underline decoration-yellow-300' : '' }}">Dashboard</a>
+            <a href="{{ route('projects.index') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('projects.*') ? 'underline decoration-yellow-300' : '' }}">Projects</a>
+            <a href="{{ route('billing') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('billing') ? 'underline decoration-yellow-300' : '' }}">Billing</a>
+            @can('admin')
+              <a href="{{ route('admin.slide-templates.index') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('admin.slide-templates.*') ? 'underline decoration-yellow-300' : '' }}">Slide Templates</a>
+            @endcan
+            <a href="{{ route('chat') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('chat') ? 'underline decoration-yellow-300' : '' }}">Chatbot</a>
+          </div>
+        @else
+          <div class="hidden sm:flex sm:items-center sm:ms-10 gap-6">
+            <a href="{{ Route::has('login') ? route('login') : url('/login') }}" class="text-white/90 hover:text-yellow-300 font-medium">{{ __('Log in') }}</a>
+            @if (Route::has('register'))
+              <a href="{{ route('register') }}" class="text-white/90 hover:text-yellow-300 font-medium">{{ __('Register') }}</a>
+            @endif
+          </div>
+        @endauth
       </div>
 
       <!-- Settings / Auth -->
-      <div class="hidden sm:flex sm:items-center sm:ms-6">
-        @auth
+      @auth
+        <div class="hidden sm:flex sm:items-center sm:ms-6">
           <div class="me-3" x-data="{ openC:false }">
             <button @click="openC=!openC" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 ring-1 ring-white/20 hover:bg-white/15">
               <span class="text-sm font-semibold">Create</span>
@@ -89,15 +97,8 @@
               @endif
             </x-slot>
           </x-dropdown>
-        @endauth
-
-        @guest
-          <a href="{{ Route::has('login') ? route('login') : url('/login') }}" class="text-sm text-white/90 hover:text-yellow-300">{{ __('Log in') }}</a>
-          @if (Route::has('register'))
-            <a href="{{ route('register') }}" class="ms-4 text-sm text-white/90 hover:text-yellow-300">{{ __('Register') }}</a>
-          @endif
-        @endguest
-      </div>
+        </div>
+      @endauth
 
       <!-- Hamburger -->
       <div class="-me-2 flex items-center sm:hidden">
@@ -113,20 +114,19 @@
 
   <!-- Responsive Navigation Menu -->
   <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
-    <div class="pt-2 pb-3 space-y-1 px-4">
-      <a href="{{ route('dashboard') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Dashboard</a>
-      <a href="{{ route('projects.index') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Projects</a>
-      <a href="{{ route('billing') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Billing</a>
-      @can('admin')
-        <a href="{{ route('admin.slide-templates.index') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Slide Templates</a>
-      @endcan
-          <a href="{{ route('chat') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Chatbot</a>
+    @auth
+      <div class="pt-2 pb-3 space-y-1 px-4">
+        <a href="{{ route('dashboard') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Dashboard</a>
+        <a href="{{ route('projects.index') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Projects</a>
+        <a href="{{ route('billing') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Billing</a>
+        @can('admin')
+          <a href="{{ route('admin.slide-templates.index') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Slide Templates</a>
+        @endcan
+        <a href="{{ route('chat') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Chatbot</a>
+      </div>
 
-    </div>
-
-    <!-- Responsive Settings Options -->
-    <div class="pt-4 pb-4 border-t border-white/10 px-4">
-      @auth
+      <!-- Responsive Settings Options -->
+      <div class="pt-4 pb-4 border-t border-white/10 px-4">
         <div class="px-3">
           <div class="font-medium text-base text-white/95">{{ Auth::user()->name }}</div>
           <div class="font-medium text-sm text-white/80">{{ Auth::user()->email }}</div>
@@ -157,20 +157,18 @@
             </form>
           @endif
         </div>
-      @endauth
-
-      @guest
-        <div class="px-3">
-          <a href="{{ Route::has('login') ? route('login') : url('/login') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">
-            {{ __('Log in') }}
+      </div>
+    @else
+      <div class="pt-2 pb-3 space-y-1 px-4">
+        <a href="{{ Route::has('login') ? route('login') : url('/login') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">
+          {{ __('Log in') }}
+        </a>
+        @if (Route::has('register'))
+          <a href="{{ route('register') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">
+            {{ __('Register') }}
           </a>
-          @if (Route::has('register'))
-            <a href="{{ route('register') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">
-              {{ __('Register') }}
-            </a>
-          @endif
-        </div>
-      @endguest
-    </div>
+        @endif
+      </div>
+    @endauth
   </div>
 </nav>
