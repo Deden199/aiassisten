@@ -20,3 +20,13 @@
    - `php artisan serve` (or configure Nginx/Apache pointing to `public/`).
 
 The application should now be accessible on the configured domain.
+
+## License Activation
+
+After the application is running, activate your license:
+
+1. Set `ENVATO_API_TOKEN` in `.env`.
+2. Visit `/admin/license` and submit the purchase code and domain.
+3. For development, set `LICENSE_BYPASS=true` to skip verification.
+
+See [license-activation.md](license-activation.md) for more details.
