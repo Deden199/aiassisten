@@ -18,6 +18,7 @@
             <a href="{{ route('projects.index') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('projects.*') ? 'underline decoration-yellow-300' : '' }}">Projects</a>
             <a href="{{ route('billing') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('billing') ? 'underline decoration-yellow-300' : '' }}">Billing</a>
             @can('admin')
+              <a href="{{ route('admin.dashboard') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('admin.dashboard') ? 'underline decoration-yellow-300' : '' }}">Admin Dashboard</a>
               <a href="{{ route('admin.slide-templates.index') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('admin.slide-templates.*') ? 'underline decoration-yellow-300' : '' }}">Slide Templates</a>
             @endcan
             <a href="{{ route('chat') }}" class="text-white/90 hover:text-yellow-300 font-medium {{ request()->routeIs('chat') ? 'underline decoration-yellow-300' : '' }}">Chatbot</a>
@@ -132,6 +133,7 @@
         <a href="{{ route('projects.index') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Projects</a>
         <a href="{{ route('billing') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Billing</a>
         @can('admin')
+          <a href="{{ route('admin.dashboard') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Admin Dashboard</a>
           <a href="{{ route('admin.slide-templates.index') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Slide Templates</a>
         @endcan
         <a href="{{ route('chat') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Chatbot</a>
