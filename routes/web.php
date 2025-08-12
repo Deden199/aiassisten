@@ -3,6 +3,7 @@
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\WebhookController;
@@ -55,14 +56,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/versions/{version}/preview', [TaskController::class, 'preview'])->name('versions.preview');
     Route::get('/versions/{version}/download', [TaskController::class, 'download'])->name('versions.download');
 
- // Billing
-Route::get('/billing', [\App\Http\Controllers\BillingController::class, 'index'])->name('billing');
-Route::post('/billing/subscribe', [\App\Http\Controllers\BillingController::class, 'subscribe'])->name('billing.subscribe');
-Route::get('/billing/invoice/{invoice}', [\App\Http\Controllers\BillingController::class, 'invoice'])->name('billing.invoice');
+    // Billing
+    Route::get('/billing', [BillingController::class, 'index'])->name('billing');
+    Route::post('/billing/subscribe', [BillingController::class, 'subscribe'])->name('billing.subscribe');
+    Route::get('/billing/invoice/{invoice}', [BillingController::class, 'invoice'])->name('billing.invoice');
 
-// Chatbot
-Route::get('/chat', [\App\Http\Controllers\ChatController::class, 'index'])->name('chat');
-Route::post('/chat', [\App\Http\Controllers\ChatController::class, 'send'])->name('chat.send');
+    // Chatbot (throttled + license gate + cost cap + quota)
+    Route::middleware(['throttle:tasks', 'license.gate', 'cost.cap', \App\Http\Middleware\EnsureActiveSubscriptionAndQuota::class])->group(function () {
+        Route::get('/chat', [ChatController::class, 'index'])->name('chat');
+        Route::post('/chat', [ChatController::class, 'send'])->name('chat.send');
+    });
 
     // Logout
     Route::post('/logout', function (Request $request) {
