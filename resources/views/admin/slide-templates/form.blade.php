@@ -19,6 +19,7 @@
               "color" => old("background_default.color", data_get($template, "background_default.color", "#ffffff")),
               "from"  => old("background_default.gradient.from", data_get($template, "background_default.gradient.from", "#ffffff")),
               "to"    => old("background_default.gradient.to", data_get($template, "background_default.gradient.to", "#ffffff")),
+              "image_url" => old("background_default.image_url", data_get($template, "background_default.image_url")),
           ],
       ])'>
       <form method="POST" action="{{ $template->exists ? route('admin.slide-templates.update',$template) : route('admin.slide-templates.store') }}">
@@ -27,10 +28,22 @@
         <div class="grid gap-4">
           <input type="text" name="name" value="{{ old('name',$template->name) }}" placeholder="Name" class="border rounded px-3 py-2" required>
           <div class="grid grid-cols-2 gap-2">
-            <input type="color" name="palette[background]" x-model="palette.background" value="{{ old('palette.background',data_get($template,'palette.background','#000000')) }}" class="border rounded px-3 py-2" required>
-            <input type="color" name="palette[primary]" x-model="palette.primary" value="{{ old('palette.primary',data_get($template,'palette.primary','#000000')) }}" class="border rounded px-3 py-2" required>
-            <input type="color" name="palette[secondary]" x-model="palette.secondary" value="{{ old('palette.secondary',data_get($template,'palette.secondary','#000000')) }}" class="border rounded px-3 py-2" required>
-            <input type="color" name="palette[accent]" x-model="palette.accent" value="{{ old('palette.accent',data_get($template,'palette.accent','#000000')) }}" class="border rounded px-3 py-2" required>
+            <label class="flex items-center gap-2">
+              <span class="text-sm w-24">Background</span>
+              <input type="color" name="palette[background]" x-model="palette.background" value="{{ old('palette.background',data_get($template,'palette.background','#000000')) }}" class="border rounded px-3 py-2 flex-1" required>
+            </label>
+            <label class="flex items-center gap-2">
+              <span class="text-sm w-24">Primary</span>
+              <input type="color" name="palette[primary]" x-model="palette.primary" value="{{ old('palette.primary',data_get($template,'palette.primary','#000000')) }}" class="border rounded px-3 py-2 flex-1" required>
+            </label>
+            <label class="flex items-center gap-2">
+              <span class="text-sm w-24">Secondary</span>
+              <input type="color" name="palette[secondary]" x-model="palette.secondary" value="{{ old('palette.secondary',data_get($template,'palette.secondary','#000000')) }}" class="border rounded px-3 py-2 flex-1" required>
+            </label>
+            <label class="flex items-center gap-2">
+              <span class="text-sm w-24">Accent</span>
+              <input type="color" name="palette[accent]" x-model="palette.accent" value="{{ old('palette.accent',data_get($template,'palette.accent','#000000')) }}" class="border rounded px-3 py-2 flex-1" required>
+            </label>
           </div>
           <div class="grid grid-cols-2 gap-2">
             <input type="text" name="font[family]" value="{{ old('font.family',data_get($template,'font.family')) }}" placeholder="Font family" class="border rounded px-3 py-2">
@@ -65,19 +78,40 @@
             <input type="number" name="layout[bullets][indent]" value="{{ old('layout.bullets.indent',data_get($template,'layout.bullets.indent')) }}" placeholder="indent" class="border rounded px-3 py-2">
           </div>
           <div class="grid gap-2">
-            <select name="background_default[type]" x-model="bg.type" class="border rounded px-3 py-2">
-              <option value="solid" @selected(old('background_default.type',data_get($template,'background_default.type'))=='solid')>solid</option>
-              <option value="gradient" @selected(old('background_default.type',data_get($template,'background_default.type'))=='gradient')>gradient</option>
-              <option value="image" @selected(old('background_default.type',data_get($template,'background_default.type'))=='image')>image</option>
-            </select>
-            <input type="color" name="background_default[color]" x-model="bg.color" value="{{ old('background_default.color',data_get($template,'background_default.color')) }}" class="border rounded px-3 py-2">
-            <input type="color" name="background_default[gradient][from]" x-model="bg.from" value="{{ old('background_default.gradient.from',data_get($template,'background_default.gradient.from')) }}" class="border rounded px-3 py-2">
-            <input type="color" name="background_default[gradient][to]" x-model="bg.to" value="{{ old('background_default.gradient.to',data_get($template,'background_default.gradient.to')) }}" class="border rounded px-3 py-2">
-            <input type="url" name="background_default[image_url]" value="{{ old('background_default.image_url',data_get($template,'background_default.image_url')) }}" placeholder="image url" class="border rounded px-3 py-2">
+            <label class="block">
+              <span class="text-sm">Background type</span>
+              <select name="background_default[type]" x-model="bg.type" class="border rounded px-3 py-2 w-full">
+                <option value="solid" @selected(old('background_default.type',data_get($template,'background_default.type'))=='solid')>solid</option>
+                <option value="gradient" @selected(old('background_default.type',data_get($template,'background_default.type'))=='gradient')>gradient</option>
+                <option value="image" @selected(old('background_default.type',data_get($template,'background_default.type'))=='image')>image</option>
+              </select>
+            </label>
+            <label class="block" x-show="bg.type === 'solid'" x-cloak>
+              <span class="text-sm">Color</span>
+              <input type="color" name="background_default[color]" x-model="bg.color" value="{{ old('background_default.color',data_get($template,'background_default.color')) }}" class="border rounded px-3 py-2 w-full">
+            </label>
+            <div class="grid grid-cols-2 gap-2" x-show="bg.type === 'gradient'" x-cloak>
+              <label class="block">
+                <span class="text-sm">From</span>
+                <input type="color" name="background_default[gradient][from]" x-model="bg.from" value="{{ old('background_default.gradient.from',data_get($template,'background_default.gradient.from')) }}" class="border rounded px-3 py-2 w-full">
+              </label>
+              <label class="block">
+                <span class="text-sm">To</span>
+                <input type="color" name="background_default[gradient][to]" x-model="bg.to" value="{{ old('background_default.gradient.to',data_get($template,'background_default.gradient.to')) }}" class="border rounded px-3 py-2 w-full">
+              </label>
+            </div>
+            <label class="block" x-show="bg.type === 'image'" x-cloak>
+              <span class="text-sm">Image URL</span>
+              <input type="url" name="background_default[image_url]" x-model="bg.image_url" placeholder="image url" value="{{ old('background_default.image_url',data_get($template,'background_default.image_url')) }}" class="border rounded px-3 py-2 w-full">
+            </label>
           </div>
           <div class="mt-4">
             <h3 class="font-medium mb-2">Preview</h3>
-            <div class="w-full h-48 border rounded relative" x-bind:style="bg.type==='gradient' ? `background:linear-gradient(to bottom right, ${bg.from}, ${bg.to})` : `background:${bg.color}`">
+            <div class="w-full h-48 border rounded relative" x-bind:style="
+                bg.type==='gradient' ? `background:linear-gradient(to bottom right, ${bg.from}, ${bg.to})` :
+                bg.type==='image' && bg.image_url ? `background:url(${bg.image_url}) center/cover no-repeat` :
+                `background:${bg.color || palette.background}`
+            ">
               <h4 class="p-4 text-2xl font-bold" x-bind:style="`color:${palette.primary}`">Title</h4>
               <ul class="px-8" x-bind:style="`color:${palette.secondary}`">
                 <li>First point</li>
