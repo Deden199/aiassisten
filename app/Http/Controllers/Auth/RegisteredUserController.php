@@ -45,6 +45,10 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
+        if (Auth::user()->isTenantAdmin() || Auth::user()->isSuperAdmin()) {
+            return redirect()->intended(route('admin.dashboard'));
+        }
+
         return redirect(route('dashboard', absolute: false));
     }
 }
