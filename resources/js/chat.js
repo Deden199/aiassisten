@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const box = document.getElementById('messages');
   const form = document.getElementById('chatForm');
   const input = document.getElementById('msg');
+  const sendBtn = form?.querySelector('button[type="submit"]');
   const dataEl = document.getElementById('chat-data');
   const history = dataEl ? JSON.parse(dataEl.dataset.messages || '[]') : [];
 
@@ -56,16 +57,30 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!text) return;
     add('user', text);
     input.value = '';
-    const res = await fetch(form.getAttribute('action'), {
-      method: 'POST',
-      headers: {
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ message: text })
-    });
-    const data = await res.json();
-    add('bot', data.reply || 'No reply');
+    if (sendBtn) sendBtn.disabled = true;
+    try {
+      const res = await fetch(form.getAttribute('action'), {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': document
+            .querySelector('meta[name="csrf-token"]')
+            .getAttribute('content'),
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: text }),
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        add('bot', errText || 'Server error');
+        return;
+      }
+      const data = await res.json();
+      add('bot', data.reply || 'No reply');
+    } catch (err) {
+      add('bot', 'Error: ' + err.message);
+    } finally {
+      if (sendBtn) sendBtn.disabled = false;
+    }
   });
 });
