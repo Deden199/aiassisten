@@ -30,6 +30,18 @@
             @endif
           </div>
         @endauth
+
+        <!-- Locale Selector -->
+        <div class="hidden sm:flex sm:items-center sm:ms-6">
+          <form method="POST" action="{{ route('locale') }}">
+            @csrf
+            <select name="locale" onchange="this.form.submit()" class="bg-white/10 text-white rounded-md px-2 py-1">
+              @foreach (config('app.available_locales') as $code)
+                <option value="{{ $code }}" @selected(app()->getLocale() === $code)>{{ $code }}</option>
+              @endforeach
+            </select>
+          </form>
+        </div>
       </div>
 
       <!-- Settings / Auth -->
@@ -125,8 +137,17 @@
         <a href="{{ route('chat') }}" class="block px-3 py-2 rounded-lg hover:bg-white/10">Chatbot</a>
       </div>
 
+      <form method="POST" action="{{ route('locale') }}" class="pb-3 px-4">
+        @csrf
+        <select name="locale" onchange="this.form.submit()" class="w-full rounded-lg bg-white/10 text-white">
+          @foreach (config('app.available_locales') as $code)
+            <option value="{{ $code }}" @selected(app()->getLocale() === $code)>{{ $code }}</option>
+          @endforeach
+        </select>
+      </form>
+
       <!-- Responsive Settings Options -->
-      <div class="pt-4 pb-4 border-t border-white/10 px-4">
+        <div class="pt-4 pb-4 border-t border-white/10 px-4">
         <div class="px-3">
           <div class="font-medium text-base text-white/95">{{ Auth::user()->name }}</div>
           <div class="font-medium text-sm text-white/80">{{ Auth::user()->email }}</div>
@@ -169,6 +190,15 @@
           </a>
         @endif
       </div>
+
+      <form method="POST" action="{{ route('locale') }}" class="pb-3 px-4">
+        @csrf
+        <select name="locale" onchange="this.form.submit()" class="w-full rounded-lg bg-white/10 text-white">
+          @foreach (config('app.available_locales') as $code)
+            <option value="{{ $code }}" @selected(app()->getLocale() === $code)>{{ $code }}</option>
+          @endforeach
+        </select>
+      </form>
     @endauth
   </div>
 </nav>
