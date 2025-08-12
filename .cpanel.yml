@@ -1,0 +1,22 @@
+---
+deployment:
+  tasks:
+    # Application files live outside the public directory
+    # cPanel serves content from ~/public_html by default
+    - export DEPLOYPATH=${HOME}/public_html/
+
+    # Install PHP dependencies without development packages
+    - /usr/local/bin/composer install --no-dev --prefer-dist --optimize-autoloader
+
+    # Install and build frontend assets
+    - /usr/local/bin/npm install
+    - /usr/local/bin/npm run build
+
+    # Run pending database migrations
+    - php artisan migrate --force
+
+    # Cache configuration for improved performance
+    - php artisan config:cache
+
+    # Sync the Laravel public directory to the cPanel webroot
+    - rsync -a public/ $DEPLOYPATH
