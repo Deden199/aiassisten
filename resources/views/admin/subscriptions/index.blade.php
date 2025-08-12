@@ -13,7 +13,8 @@
           <tr>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tenant</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
-            <th class="px-6 py-3">Status</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            <th class="px-6 py-3"></th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
@@ -22,6 +23,7 @@
             <td class="px-6 py-4 whitespace-nowrap">{{ optional($sub->tenant)->name }}</td>
             <td class="px-6 py-4 whitespace-nowrap">{{ optional($sub->plan)->code }}</td>
             <td class="px-6 py-4 whitespace-nowrap">{{ $sub->status }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-right"><a href="{{ route('admin.subscriptions.edit', $sub) }}" class="text-indigo-600 hover:underline">Edit</a></td>
           </tr>
           @endforeach
         </tbody>
