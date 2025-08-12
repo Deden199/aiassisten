@@ -1,8 +1,10 @@
-<x-app-layout>
-  <x-slot name="header">
-    <h2 class="font-semibold text-xl leading-tight">Projects</h2>
-  </x-slot>
+@extends('layouts.app')
 
+@section('header')
+  <h2 class="font-semibold text-xl leading-tight">Projects</h2>
+@endsection
+
+@section('content')
   <div class="p-6 space-y-6">
     {{-- Header & CTA --}}
     <div class="flex flex-wrap items-center justify-between gap-3">
@@ -62,4 +64,4 @@
 
     {{ $projects->links() }}
   </div>
-</x-app-layout>
+@endsection
