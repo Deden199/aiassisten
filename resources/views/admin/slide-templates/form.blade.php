@@ -7,19 +7,19 @@
 @section('content')
 <div class="py-6">
   <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
-    <div class="bg-white p-6 shadow-sm rounded-lg" x-data='@json([
+    <div class="bg-white p-6 shadow-sm rounded-lg" x-data='@js([
           "palette" => [
-              "background" => old("palette.background", data_get($template,'palette.background','#000000')),
-              "primary" => old("palette.primary", data_get($template,'palette.primary','#000000')),
-              "secondary" => old("palette.secondary", data_get($template,'palette.secondary','#000000')),
-              "accent" => old("palette.accent", data_get($template,'palette.accent','#000000')),
+              "background" => old("palette.background", data_get($template, "palette.background", "#000000")),
+              "primary"   => old("palette.primary", data_get($template, "palette.primary", "#000000")),
+              "secondary" => old("palette.secondary", data_get($template, "palette.secondary", "#000000")),
+              "accent"    => old("palette.accent", data_get($template, "palette.accent", "#000000")),
           ],
           "bg" => [
-              "type" => old("background_default.type", data_get($template,'background_default.type','solid')),
-              "color" => old("background_default.color", data_get($template,'background_default.color','#ffffff')),
-              "from" => old("background_default.gradient.from", data_get($template,'background_default.gradient.from','#ffffff')),
-              "to" => old("background_default.gradient.to", data_get($template,'background_default.gradient.to','#ffffff')),
-          ]
+              "type"  => old("background_default.type", data_get($template, "background_default.type", "solid")),
+              "color" => old("background_default.color", data_get($template, "background_default.color", "#ffffff")),
+              "from"  => old("background_default.gradient.from", data_get($template, "background_default.gradient.from", "#ffffff")),
+              "to"    => old("background_default.gradient.to", data_get($template, "background_default.gradient.to", "#ffffff")),
+          ],
       ])'>
       <form method="POST" action="{{ $template->exists ? route('admin.slide-templates.update',$template) : route('admin.slide-templates.store') }}">
         @csrf
