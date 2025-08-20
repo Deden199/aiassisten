@@ -11,9 +11,15 @@ class ChatController extends Controller
 {
     public function index(Request $request)
     {
+        $user = $request->user();
+        if (!$user) {
+            return redirect()->route('login')
+                ->with('status', __('Please log in to use chat.'));
+        }
+
         $session = ChatSession::firstOrCreate(
-            ['user_id' => $request->user()->id],
-            ['tenant_id' => $request->user()->tenant_id]
+            ['user_id' => $user->id],
+            ['tenant_id' => $user->tenant_id]
         );
 
         $messages = $session->messages()->orderBy('created_at')->get(['role','content']);
@@ -23,6 +29,14 @@ class ChatController extends Controller
 
     public function send(Request $request, AiProvider $provider)
     {
+        $user = $request->user();
+        if (!$user) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Authentication required.'], 401);
+            }
+            return redirect()->route('login');
+        }
+
         $data = $request->validate([
             'message' => 'required|string|max:8000',
             'locale'  => 'nullable|string|max:10',
@@ -33,18 +47,18 @@ class ChatController extends Controller
             'id'        => 'chat',
             'title'     => 'Chat',
             'language'  => $locale,
-            'tenant_id' => $request->user()->tenant_id,
+            'tenant_id' => $user->tenant_id,
         ]);
-        $fakeProject->setRelation('user', $request->user());
-        $fakeProject->setRelation('tenant', $request->user()->tenant);
+        $fakeProject->setRelation('user', $user);
+        $fakeProject->setRelation('tenant', $user->tenant);
 
         $session = ChatSession::firstOrCreate(
-            ['user_id' => $request->user()->id],
-            ['tenant_id' => $request->user()->tenant_id]
+            ['user_id' => $user->id],
+            ['tenant_id' => $user->tenant_id]
         );
 
         $session->messages()->create([
-            'tenant_id' => $request->user()->tenant_id,
+            'tenant_id' => $user->tenant_id,
             'role' => 'user',
             'content' => $data['message'],
         ]);
@@ -65,7 +79,7 @@ class ChatController extends Controller
         $content = \App\Services\AiProvider::extractContent($result) ?: 'Sorry, no response.';
 
         $session->messages()->create([
-            'tenant_id' => $request->user()->tenant_id,
+            'tenant_id' => $user->tenant_id,
             'role' => 'bot',
             'content' => $content,
         ]);

@@ -63,13 +63,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/billing/subscribe', [BillingController::class, 'subscribe'])->name('billing.subscribe');
     Route::get('/billing/invoice/{invoice}', [BillingController::class, 'invoice'])->name('billing.invoice');
 
-// Chatbot: tidak dikunci lisensi/plan/kuota
-Route::middleware(['throttle:tasks'])->group(function () {
-    Route::get('/chat', [ChatController::class, 'index'])->name('chat');
-    Route::post('/chat', [ChatController::class, 'send'])->name('chat.send');
-});
-
-
     // Logout
     Route::post('/logout', function (Request $request) {
         Auth::guard('web')->logout();
@@ -77,6 +70,12 @@ Route::middleware(['throttle:tasks'])->group(function () {
         $request->session()->regenerateToken();
         return redirect('/');
     })->name('logout');
+});
+
+// Chatbot: tidak dikunci lisensi/plan/kuota
+Route::middleware(['auth', 'throttle:tasks'])->group(function () {
+    Route::get('/chat', [ChatController::class, 'index'])->name('chat');
+    Route::post('/chat', [ChatController::class, 'send'])->name('chat.send');
 });
 
 // Webhooks
