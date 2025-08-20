@@ -5,16 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\AiProject;
 use App\Models\ChatSession;
 use App\Services\AiProvider;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class ChatController extends Controller
 {
     public function index(Request $request)
     {
-        $session = ChatSession::firstOrCreate(
-            ['user_id' => $request->user()->id],
-            ['tenant_id' => $request->user()->tenant_id]
-        );
+        try {
+            $session = ChatSession::firstOrCreate(
+                ['user_id' => $request->user()->id],
+                ['tenant_id' => $request->user()->tenant_id]
+            );
+        } catch (QueryException $e) {
+            abort(500, 'Chat feature is not available. Please run migrations.');
+        }
 
         $messages = $session->messages()->orderBy('created_at')->get(['role','content']);
 
@@ -38,10 +43,17 @@ class ChatController extends Controller
         $fakeProject->setRelation('user', $request->user());
         $fakeProject->setRelation('tenant', $request->user()->tenant);
 
-        $session = ChatSession::firstOrCreate(
-            ['user_id' => $request->user()->id],
-            ['tenant_id' => $request->user()->tenant_id]
-        );
+        try {
+            $session = ChatSession::firstOrCreate(
+                ['user_id' => $request->user()->id],
+                ['tenant_id' => $request->user()->tenant_id]
+            );
+        } catch (QueryException $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Chat feature is not available. Please run migrations.',
+            ], 500);
+        }
 
         $session->messages()->create([
             'tenant_id' => $request->user()->tenant_id,
