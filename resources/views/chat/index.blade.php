@@ -27,5 +27,7 @@
 @endsection
 
 @push('scripts')
-  @vite('resources/js/chat.js')
+  @if (file_exists(public_path('build/manifest.json')))
+    @vite('resources/js/chat.js')
+  @endif
 @endpush
